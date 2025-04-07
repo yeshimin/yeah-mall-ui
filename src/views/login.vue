@@ -142,8 +142,11 @@ function getCode() {
   getCodeImg().then(res => {
     captchaEnabled.value = res.captchaEnabled === undefined ? true : res.captchaEnabled;
     if (captchaEnabled.value) {
-      codeUrl.value = "data:image/gif;base64," + res.img;
-      loginForm.value.uuid = res.uuid;
+      // update by yeshimin at 2025-04-03
+      // codeUrl.value = "data:image/gif;base64," + res.img;
+      // loginForm.value.uuid = res.uuid;
+      codeUrl.value = res.data.image;
+      loginForm.value.uuid = res.data.key;
     }
   });
 }

@@ -36,9 +36,12 @@ const usePermissionStore = defineStore(
         return new Promise(resolve => {
           // 向后端请求路由数据
           getRouters().then(res => {
-            const sdata = JSON.parse(JSON.stringify(res.data))
-            const rdata = JSON.parse(JSON.stringify(res.data))
-            const defaultData = JSON.parse(JSON.stringify(res.data))
+            // update by yeshimin at 2025-04-07
+            var resources = adapterMenuTree(res.data)
+
+            const sdata = JSON.parse(JSON.stringify(resources))
+            const rdata = JSON.parse(JSON.stringify(resources))
+            const defaultData = JSON.parse(JSON.stringify(resources))
             const sidebarRoutes = filterAsyncRouter(sdata)
             const rewriteRoutes = filterAsyncRouter(rdata, false, true)
             const defaultRoutes = filterAsyncRouter(defaultData)
@@ -122,6 +125,35 @@ export const loadView = (view) => {
     }
   }
   return res
+}
+
+/**
+ * 服务端数据到前端数据适配
+ */
+function adapterMenuTree(serverData) {
+  return serverData.map(item => {
+    const resource = {
+      name: item.name,
+      path: item.path,
+      hidden: !item.displayed,
+      redirect: item.type == 1 ? 'noRedirect' : '',
+      component: item.component,
+      alwaysShow: item.type == 1 ? true : false,
+      meta: {
+        title: item.name,
+        icon: item.icon,
+        noCache: false,
+        link: item.linkUrl
+      }
+    };
+
+    // 如果有 children，就递归转换
+    if (item.children && item.children.length > 0) {
+      resource.children = adapterMenuTree(item.children);
+    }
+
+    return resource;
+  });
 }
 
 export default usePermissionStore
