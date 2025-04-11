@@ -56,7 +56,6 @@
               <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" :columns="columns"></right-toolbar>
             </el-row>
 
-            <!-- update by yeshimin at 2025-04-07 -->
             <el-table v-loading="loading" :data="userList" @selection-change="handleSelectionChange">
               <el-table-column type="selection" width="50" align="center" />
               <el-table-column label="ID" align="center" key="id" prop="id" v-if="columns[0].visible" />

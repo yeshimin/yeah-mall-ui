@@ -50,8 +50,6 @@ export function logout() {
 // 获取验证码
 export function getCodeImg() {
   return request({
-    // update by yeshimin at 2025-04-03
-    // url: '/captchaImage',
     url: '/auth/captcha',
     headers: {
       isToken: false

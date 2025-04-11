@@ -23,9 +23,6 @@ const useUserStore = defineStore(
         const uuid = userInfo.uuid
         return new Promise((resolve, reject) => {
           login(username, password, code, uuid).then(res => {
-            // update by yeshimin at 2025-04-03
-            // setToken(res.token)
-            // this.token = res.token
             setToken(res.data.token)
             this.token = res.data.token
             resolve()
@@ -38,7 +35,6 @@ const useUserStore = defineStore(
       getInfo() {
         return new Promise((resolve, reject) => {
           getInfo().then(res => {
-            // update by yeshimin at 2025-04-04
             const user = res.data.user
             let avatar = user.avatar || ""
             if (!isHttp(avatar)) {

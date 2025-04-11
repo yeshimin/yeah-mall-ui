@@ -36,7 +36,6 @@ const usePermissionStore = defineStore(
         return new Promise(resolve => {
           // 向后端请求路由数据
           getRouters().then(res => {
-            // update by yeshimin at 2025-04-07
             var resources = adapterMenuTree(res.data)
 
             const sdata = JSON.parse(JSON.stringify(resources))
