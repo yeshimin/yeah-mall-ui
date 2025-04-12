@@ -20,7 +20,7 @@ export function getMenu(menuId) {
 // 查询菜单下拉树结构
 export function treeselect() {
   return request({
-    url: '/system/menu/treeselect',
+    url: '/sysRes/tree',
     method: 'get'
   })
 }
@@ -28,8 +28,9 @@ export function treeselect() {
 // 根据角色ID查询菜单下拉树结构
 export function roleMenuTreeselect(roleId) {
   return request({
-    url: '/system/menu/roleMenuTreeselect/' + roleId,
-    method: 'get'
+    url: '/sysRole/queryResourceTree',
+    method: 'get',
+    params: { roleId }
   })
 }
 
