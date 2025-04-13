@@ -95,8 +95,8 @@
       <el-table v-loading="loading" :data="roleList" @selection-change="handleSelectionChange">
          <el-table-column type="selection" width="55" align="center" />
          <el-table-column label="角色ID" prop="id" width="120" />
-         <el-table-column label="角色编码" prop="code" :show-overflow-tooltip="true" width="150" />
          <el-table-column label="角色名称" prop="name" :show-overflow-tooltip="true" width="150" />
+         <el-table-column label="角色编码" prop="code" :show-overflow-tooltip="true" width="150" />
          <el-table-column label="显示顺序" prop="sort" width="100" />
          <el-table-column label="状态" align="status" width="100">
             <template #default="scope">
@@ -248,7 +248,7 @@ import { roleMenuTreeselect, treeselect as menuTreeselect } from "@/api/system/m
 
 const router = useRouter();
 const { proxy } = getCurrentInstance();
-const { sys_normal_disable } = proxy.useDict("sys_normal_disable");
+const { data_status: sys_normal_disable } = proxy.useDict("data_status");
 
 const roleList = ref([]);
 const open = ref(false);
@@ -301,7 +301,31 @@ const { queryParams, form, rules } = toRefs(data);
 /** 查询角色列表 */
 function getList() {
   loading.value = true;
-  listRole().then(response => {
+
+  let query = JSON.parse(JSON.stringify(queryParams.value));
+  // name进行模糊查询，使用conditions_参数机制
+  let conditions_ = '';
+  if (query.name) {
+    let condition = `name:like:${query.name}`;
+    conditions_ += ';' + condition;
+    query.name = undefined;
+  }
+  // code进行模糊查询，使用conditions_参数机制
+  if (query.code) {
+    let condition = `code:like:${query.code}`;
+    conditions_ += ';' + condition;
+    query.code = undefined;
+  }
+  // query.createDateBegin, query.createDateEnd from dateRange数组
+  if (dateRange.value && dateRange.value.length > 0) {
+    let condition = `createTime:between:${dateRange.value[0]},${dateRange.value[1]}`;
+    conditions_ += ';' + condition;
+  }
+  query.conditions_ = conditions_;
+  // log query
+  console.log('query', JSON.stringify(query));
+
+  listRole(query).then(response => {
     roleList.value = response.data.records;
     total.value = response.data.total;
     loading.value = false;

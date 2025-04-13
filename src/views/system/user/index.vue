@@ -227,7 +227,7 @@ import "splitpanes/dist/splitpanes.css"
 const router = useRouter();
 const appStore = useAppStore()
 const { proxy } = getCurrentInstance();
-const { user_status, gender } = proxy.useDict("user_status", "gender");
+const { data_status: user_status, gender } = proxy.useDict("data_status", "gender");
 
 const userList = ref([]);
 const open = ref(false);
