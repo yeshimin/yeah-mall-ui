@@ -134,7 +134,7 @@ function adapterMenuTree(serverData) {
     const resource = {
       name: item.name,
       path: item.path,
-      hidden: !item.displayed,
+      hidden: !item.visible,
       redirect: item.type == 1 ? 'noRedirect' : '',
       component: item.component,
       alwaysShow: item.type == 1 ? true : false,
