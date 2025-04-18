@@ -158,7 +158,7 @@
                <el-input v-model="form.code" placeholder="请输入角色编码" />
             </el-form-item>
             <el-form-item label="角色顺序" prop="sort">
-               <el-input-number v-model="form.sort" controls-position="right" :min="0" />
+               <el-input-number v-model="form.sort" controls-position="right" :min="1" />
             </el-form-item>
             <el-form-item label="状态">
                <el-radio-group v-model="form.status">

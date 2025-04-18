@@ -455,7 +455,7 @@
             <el-input-number v-model="formConf.labelWidth" placeholder="标签宽度" />
           </el-form-item>
           <el-form-item label="栅格间隔">
-            <el-input-number v-model="formConf.gutter" :min="0" placeholder="栅格间隔" />
+            <el-input-number v-model="formConf.gutter" :min="1" placeholder="栅格间隔" />
           </el-form-item>
           <el-form-item label="禁用表单">
             <el-switch v-model="formConf.disabled" />

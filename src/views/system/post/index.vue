@@ -120,7 +120,7 @@
                <el-input v-model="form.code" placeholder="请输入编码名称" />
             </el-form-item>
             <el-form-item label="岗位顺序" prop="sort">
-               <el-input-number v-model="form.sort" controls-position="right" :min="0" />
+               <el-input-number v-model="form.sort" controls-position="right" :min="1" />
             </el-form-item>
             <el-form-item label="岗位状态" prop="status">
                <el-radio-group v-model="form.status">

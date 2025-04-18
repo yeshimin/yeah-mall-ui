@@ -144,7 +144,7 @@
                <el-input v-model="form.cssClass" placeholder="请输入样式属性" />
             </el-form-item> -->
             <el-form-item label="显示排序" prop="sort">
-               <el-input-number v-model="form.sort" controls-position="right" :min="0" />
+               <el-input-number v-model="form.sort" controls-position="right" :min="1" />
             </el-form-item>
             <!-- <el-form-item label="回显样式" prop="listClass">
                <el-select v-model="form.listClass">
