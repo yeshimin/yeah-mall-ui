@@ -217,12 +217,13 @@
 
 <script setup name="User">
 import { getToken } from "@/utils/auth";
-import useAppStore from '@/store/modules/app'
+import useAppStore from '@/store/modules/app';
 import { changeUserStatus, listUser, resetUserPwd, delUser, getUser, updateUser, addUser, deptTreeSelect } from "@/api/system/user";
 import { listRole } from "@/api/system/role";
 import { listPost } from "@/api/system/post";
-import { Splitpanes, Pane } from "splitpanes"
-import "splitpanes/dist/splitpanes.css"
+import { Splitpanes, Pane } from "splitpanes";
+import "splitpanes/dist/splitpanes.css";
+import SHA256 from 'crypto-js/sha256';
 
 const router = useRouter();
 const appStore = useAppStore()
@@ -472,8 +473,10 @@ function handleResetPwd(row) {
       }
     },
   }).then(({ value }) => {
-    resetUserPwd(row.id, value).then(response => {
-      proxy.$modal.msgSuccess("修改成功，新密码是：" + value);
+    // 密码加密处理
+    let encPass = SHA256(value.trim()).toString();
+    resetUserPwd(row.id, encPass).then(response => {
+      proxy.$modal.msgSuccess("修改成功");
     });
   }).catch(() => {});
 };
@@ -575,6 +578,8 @@ function submitForm() {
           getList();
         });
       } else {
+        // 密码加密处理
+        form.value.password = SHA256(form.value.password.trim()).toString();
         addUser(form.value).then(response => {
           proxy.$modal.msgSuccess("新增成功");
           open.value = false;

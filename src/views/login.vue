@@ -68,7 +68,8 @@
 import { getCodeImg } from "@/api/login";
 import Cookies from "js-cookie";
 import { encrypt, decrypt } from "@/utils/jsencrypt";
-import useUserStore from '@/store/modules/user'
+import useUserStore from '@/store/modules/user';
+import SHA256 from 'crypto-js/sha256';
 
 const title = import.meta.env.VITE_APP_TITLE;
 const userStore = useUserStore();
@@ -118,6 +119,8 @@ function handleLogin() {
         Cookies.remove("rememberMe");
       }
       // 调用action的登录方法
+      // 密码加密处理
+      loginForm.value.password = SHA256(loginForm.value.password.trim()).toString();
       userStore.login(loginForm.value).then(() => {
         const query = route.query;
         const otherQueryParams = Object.keys(query).reduce((acc, cur) => {
