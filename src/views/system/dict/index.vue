@@ -1,25 +1,25 @@
 <template>
    <div class="app-container">
       <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
-         <el-form-item label="字典名称" prop="dictName">
+         <el-form-item label="字典名称" prop="name">
             <el-input
-               v-model="queryParams.dictName"
+               v-model="queryParams.name"
                placeholder="请输入字典名称"
                clearable
                style="width: 240px"
                @keyup.enter="handleQuery"
             />
          </el-form-item>
-         <el-form-item label="字典类型" prop="dictType">
+         <el-form-item label="字典类型" prop="code">
             <el-input
-               v-model="queryParams.dictType"
+               v-model="queryParams.code"
                placeholder="请输入字典类型"
                clearable
                style="width: 240px"
                @keyup.enter="handleQuery"
             />
          </el-form-item>
-         <el-form-item label="状态" prop="status">
+         <!-- <el-form-item label="状态" prop="status">
             <el-select
                v-model="queryParams.status"
                placeholder="字典状态"
@@ -33,7 +33,7 @@
                   :value="dict.value"
                />
             </el-select>
-         </el-form-item>
+         </el-form-item> -->
          <el-form-item label="创建时间" style="width: 308px">
             <el-date-picker
                v-model="dateRange"
@@ -103,20 +103,20 @@
 
       <el-table v-loading="loading" :data="typeList" @selection-change="handleSelectionChange">
          <el-table-column type="selection" width="55" align="center" />
-         <el-table-column label="字典编号" align="center" prop="dictId" />
-         <el-table-column label="字典名称" align="center" prop="dictName" :show-overflow-tooltip="true"/>
+         <el-table-column label="字典编号" align="center" prop="id" />
+         <el-table-column label="字典名称" align="center" prop="name" :show-overflow-tooltip="true"/>
          <el-table-column label="字典类型" align="center" :show-overflow-tooltip="true">
             <template #default="scope">
-               <router-link :to="'/system/dict-data/index/' + scope.row.dictId" class="link-type">
-                  <span>{{ scope.row.dictType }}</span>
+               <router-link :to="'/system/dict-data/index/' + scope.row.id" class="link-type">
+                  <span>{{ scope.row.code }}</span>
                </router-link>
             </template>
          </el-table-column>
-         <el-table-column label="状态" align="center" prop="status">
+         <!-- <el-table-column label="状态" align="center" prop="status">
             <template #default="scope">
                <dict-tag :options="sys_normal_disable" :value="scope.row.status" />
             </template>
-         </el-table-column>
+         </el-table-column> -->
          <el-table-column label="备注" align="center" prop="remark" :show-overflow-tooltip="true" />
          <el-table-column label="创建时间" align="center" prop="createTime" width="180">
             <template #default="scope">
@@ -134,21 +134,21 @@
       <pagination
          v-show="total > 0"
          :total="total"
-         v-model:page="queryParams.pageNum"
-         v-model:limit="queryParams.pageSize"
+         v-model:page="queryParams.current"
+         v-model:limit="queryParams.size"
          @pagination="getList"
       />
 
       <!-- 添加或修改参数配置对话框 -->
       <el-dialog :title="title" v-model="open" width="500px" append-to-body>
          <el-form ref="dictRef" :model="form" :rules="rules" label-width="80px">
-            <el-form-item label="字典名称" prop="dictName">
-               <el-input v-model="form.dictName" placeholder="请输入字典名称" />
+            <el-form-item label="字典名称" prop="name">
+               <el-input v-model="form.name" placeholder="请输入字典名称" />
             </el-form-item>
-            <el-form-item label="字典类型" prop="dictType">
-               <el-input v-model="form.dictType" placeholder="请输入字典类型" />
+            <el-form-item label="字典类型" prop="code">
+               <el-input v-model="form.code" placeholder="请输入字典类型" />
             </el-form-item>
-            <el-form-item label="状态" prop="status">
+            <!-- <el-form-item label="状态" prop="status">
                <el-radio-group v-model="form.status">
                   <el-radio
                      v-for="dict in sys_normal_disable"
@@ -156,7 +156,7 @@
                      :value="dict.value"
                   >{{ dict.label }}</el-radio>
                </el-radio-group>
-            </el-form-item>
+            </el-form-item> -->
             <el-form-item label="备注" prop="remark">
                <el-input v-model="form.remark" type="textarea" placeholder="请输入内容"></el-input>
             </el-form-item>
@@ -176,7 +176,7 @@ import useDictStore from '@/store/modules/dict'
 import { listType, getType, delType, addType, updateType, refreshCache } from "@/api/system/dict/type";
 
 const { proxy } = getCurrentInstance();
-const { sys_normal_disable } = proxy.useDict("sys_normal_disable");
+const { data_status: sys_normal_disable } = proxy.useDict("data_status");
 
 const typeList = ref([]);
 const open = ref(false);
@@ -192,15 +192,15 @@ const dateRange = ref([]);
 const data = reactive({
   form: {},
   queryParams: {
-    pageNum: 1,
-    pageSize: 10,
-    dictName: undefined,
-    dictType: undefined,
+    current: 1,
+    size: 10,
+    name: undefined,
+    code: undefined,
     status: undefined
   },
   rules: {
-    dictName: [{ required: true, message: "字典名称不能为空", trigger: "blur" }],
-    dictType: [{ required: true, message: "字典类型不能为空", trigger: "blur" }]
+    name: [{ required: true, message: "字典名称不能为空", trigger: "blur" }],
+    code: [{ required: true, message: "字典类型不能为空", trigger: "blur" }]
   },
 });
 
@@ -208,12 +208,38 @@ const { queryParams, form, rules } = toRefs(data);
 
 /** 查询字典类型列表 */
 function getList() {
-  loading.value = true;
-  listType(proxy.addDateRange(queryParams.value, dateRange.value)).then(response => {
-    typeList.value = response.rows;
-    total.value = response.total;
-    loading.value = false;
-  });
+   loading.value = true;
+
+   let query = JSON.parse(JSON.stringify(queryParams.value));
+   // 查询第一级的数据
+   query.level = 1;
+   // name进行模糊查询，使用conditions_参数机制
+   let conditions_ = '';
+   if (query.name) {
+      let condition = `name:like:${query.name}`;
+      conditions_ += ';' + condition;
+      query.name = undefined;
+   }
+   // code进行模糊查询，使用conditions_参数机制
+   if (query.code) {
+      let condition = `code:like:${query.code}`;
+      conditions_ += ';' + condition;
+      query.code = undefined;
+   }
+   // query.createDateBegin, query.createDateEnd from dateRange数组
+   if (dateRange.value && dateRange.value.length > 0) {
+      let condition = `createTime:between:${dateRange.value[0]},${dateRange.value[1]}`;
+      conditions_ += ';' + condition;
+   }
+   query.conditions_ = conditions_;
+   // log query
+   console.log('query', JSON.stringify(query));
+
+   listType(query).then(response => {
+      typeList.value = response.data.records;
+      total.value = response.data.total;
+      loading.value = false;
+   });
 }
 
 /** 取消按钮 */
@@ -225,9 +251,9 @@ function cancel() {
 /** 表单重置 */
 function reset() {
   form.value = {
-    dictId: undefined,
-    dictName: undefined,
-    dictType: undefined,
+    id: undefined,
+    name: undefined,
+    code: undefined,
     status: "0",
     remark: undefined
   };
@@ -236,7 +262,7 @@ function reset() {
 
 /** 搜索按钮操作 */
 function handleQuery() {
-  queryParams.value.pageNum = 1;
+  queryParams.value.current = 1;
   getList();
 }
 
@@ -256,7 +282,7 @@ function handleAdd() {
 
 /** 多选框选中数据 */
 function handleSelectionChange(selection) {
-  ids.value = selection.map(item => item.dictId);
+  ids.value = selection.map(item => item.id);
   single.value = selection.length != 1;
   multiple.value = !selection.length;
 }
@@ -264,8 +290,8 @@ function handleSelectionChange(selection) {
 /** 修改按钮操作 */
 function handleUpdate(row) {
   reset();
-  const dictId = row.dictId || ids.value;
-  getType(dictId).then(response => {
+  const id = row.id || ids.value;
+  getType(id).then(response => {
     form.value = response.data;
     open.value = true;
     title.value = "修改字典类型";
@@ -276,7 +302,7 @@ function handleUpdate(row) {
 function submitForm() {
   proxy.$refs["dictRef"].validate(valid => {
     if (valid) {
-      if (form.value.dictId != undefined) {
+      if (form.value.id != undefined) {
         updateType(form.value).then(response => {
           proxy.$modal.msgSuccess("修改成功");
           open.value = false;
@@ -295,13 +321,13 @@ function submitForm() {
 
 /** 删除按钮操作 */
 function handleDelete(row) {
-  const dictIds = row.dictId || ids.value;
-  proxy.$modal.confirm('是否确认删除字典编号为"' + dictIds + '"的数据项？').then(function() {
-    return delType(dictIds);
-  }).then(() => {
-    getList();
-    proxy.$modal.msgSuccess("删除成功");
-  }).catch(() => {});
+   const dictIds = row.id ? [row.id] : ids.value;
+   proxy.$modal.confirm('是否确认删除字典编号为"' + dictIds + '"的数据项？').then(function () {
+      return delType(dictIds);
+   }).then(() => {
+      getList();
+      proxy.$modal.msgSuccess("删除成功");
+   }).catch(() => { });
 }
 
 /** 导出按钮操作 */
