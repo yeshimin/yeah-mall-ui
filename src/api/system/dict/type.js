@@ -3,7 +3,7 @@ import request from '@/utils/request'
 // 查询字典类型列表
 export function listType(query) {
   return request({
-    url: '/sysDict/crud/query',
+    url: '/admin/sysDict/crud/query',
     method: 'get',
     params: query
   })
@@ -12,7 +12,7 @@ export function listType(query) {
 // 查询字典类型详细
 export function getType(dictId) {
   return request({
-    url: '/sysDict/crud/detail',
+    url: '/admin/sysDict/crud/detail',
     method: 'get',
     params: {
       id: dictId
@@ -23,7 +23,7 @@ export function getType(dictId) {
 // 新增字典类型
 export function addType(data) {
   return request({
-    url: '/sysDict/create',
+    url: '/admin/sysDict/create',
     method: 'post',
     data: data
   })
@@ -32,7 +32,7 @@ export function addType(data) {
 // 修改字典类型
 export function updateType(data) {
   return request({
-    url: '/sysDict/update',
+    url: '/admin/sysDict/update',
     method: 'post',
     data: data
   })
@@ -41,7 +41,7 @@ export function updateType(data) {
 // 删除字典类型
 export function delType(dictId) {
   return request({
-    url: '/sysDict/delete',
+    url: '/admin/sysDict/delete',
     method: 'post',
     data: {
       ids: dictId
@@ -60,7 +60,7 @@ export function refreshCache() {
 // 获取字典选择框列表
 export function optionselect(params) {
   return request({
-    url: '/sysDict/crud/query',
+    url: '/admin/sysDict/crud/query',
     method: 'get',
     params
   })

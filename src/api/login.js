@@ -9,7 +9,7 @@ export function login(username, password, code, uuid) {
     key: uuid
   }
   return request({
-    url: '/auth/login',
+    url: '/admin/auth/login',
     headers: {
       isToken: false,
       repeatSubmit: false
@@ -34,7 +34,7 @@ export function register(data) {
 // 获取用户详细信息
 export function getInfo() {
   return request({
-    url: '/sysUser/mine',
+    url: '/admin/sysUser/mine',
     method: 'get'
   })
 }
@@ -50,7 +50,7 @@ export function logout() {
 // 获取验证码
 export function getCodeImg() {
   return request({
-    url: '/auth/captcha',
+    url: '/admin/auth/captcha',
     headers: {
       isToken: false
     },

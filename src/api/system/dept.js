@@ -13,7 +13,7 @@ export function listDept(query) {
 // 查询组织树
 export function orgTree(query) {
   return request({
-    url: '/sysOrg/tree',
+    url: '/admin/sysOrg/tree',
     method: 'get',
     params: query
   })
@@ -30,7 +30,7 @@ export function listDeptExcludeChild(deptId) {
 // 查询部门详细
 export function getDept(deptId) {
   return request({
-    url: '/sysOrg/crud/detail',
+    url: '/admin/sysOrg/crud/detail',
     method: 'get',
     params: {
       id: deptId
@@ -41,7 +41,7 @@ export function getDept(deptId) {
 // 新增部门
 export function addDept(data) {
   return request({
-    url: '/sysOrg/create',
+    url: '/admin/sysOrg/create',
     method: 'post',
     data: data
   })
@@ -50,7 +50,7 @@ export function addDept(data) {
 // 修改部门
 export function updateDept(data) {
   return request({
-    url: '/sysOrg/update',
+    url: '/admin/sysOrg/update',
     method: 'post',
     data: data
   })
@@ -59,7 +59,7 @@ export function updateDept(data) {
 // 删除部门
 export function delDept(deptId) {
   return request({
-    url: '/sysOrg/delete',
+    url: '/admin/sysOrg/delete',
     method: 'post',
     data: {
       ids: deptId

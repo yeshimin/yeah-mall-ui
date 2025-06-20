@@ -3,7 +3,7 @@ import request from '@/utils/request'
 // 查询角色列表
 export function listRole(query) {
   return request({
-    url: '/sysRole/crud/query',
+    url: '/admin/sysRole/crud/query',
     method: 'get',
     params: query
   })
@@ -12,7 +12,7 @@ export function listRole(query) {
 // 查询角色详细
 export function getRole(roleId) {
   return request({
-    url: '/sysRole/detail',
+    url: '/admin/sysRole/detail',
     method: 'get',
     params: {
       id: roleId
@@ -23,7 +23,7 @@ export function getRole(roleId) {
 // 新增角色
 export function addRole(data) {
   return request({
-    url: '/sysRole/create',
+    url: '/admin/sysRole/create',
     method: 'post',
     data: data
   })
@@ -32,7 +32,7 @@ export function addRole(data) {
 // 修改角色
 export function updateRole(data) {
   return request({
-    url: '/sysRole/update',
+    url: '/admin/sysRole/update',
     method: 'post',
     data: data
   })
@@ -54,7 +54,7 @@ export function changeRoleStatus(roleId, status) {
     status
   }
   return request({
-    url: '/sysRole/update',
+    url: '/admin/sysRole/update',
     method: 'post',
     data: data
   })
@@ -63,7 +63,7 @@ export function changeRoleStatus(roleId, status) {
 // 删除角色
 export function delRole(roleId) {
   return request({
-    url: '/sysRole/delete',
+    url: '/admin/sysRole/delete',
     method: 'post',
     data: {
       ids: roleId

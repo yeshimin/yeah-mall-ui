@@ -4,7 +4,7 @@ import { parseStrEmpty } from "@/utils/ruoyi";
 // 查询用户列表
 export function listUser(query) {
   return request({
-    url: '/sysUser/query',
+    url: '/admin/sysUser/query',
     method: 'get',
     params: query
   })
@@ -13,7 +13,7 @@ export function listUser(query) {
 // 查询用户详细
 export function getUser(userId) {
   return request({
-    url: '/sysUser/detail',
+    url: '/admin/sysUser/detail',
     method: 'get',
     params: { id: parseStrEmpty(userId) }
   })
@@ -22,7 +22,7 @@ export function getUser(userId) {
 // 新增用户
 export function addUser(data) {
   return request({
-    url: '/sysUser/create',
+    url: '/admin/sysUser/create',
     method: 'post',
     data: data
   })
@@ -31,7 +31,7 @@ export function addUser(data) {
 // 修改用户
 export function updateUser(data) {
   return request({
-    url: '/sysUser/update',
+    url: '/admin/sysUser/update',
     method: 'post',
     data: data
   })
@@ -40,7 +40,7 @@ export function updateUser(data) {
 // 删除用户
 export function delUser(userId) {
   return request({
-    url: 'sysUser/delete',
+    url: '/admin/sysUser/delete',
     method: 'post',
     data: {
       ids: userId
@@ -55,7 +55,7 @@ export function resetUserPwd(userId, password) {
     password
   }
   return request({
-    url: '/sysUser/update',
+    url: '/admin/sysUser/update',
     method: 'post',
     data: data
   })
@@ -68,7 +68,7 @@ export function changeUserStatus(userId, status) {
     status
   }
   return request({
-    url: '/sysUser/update',
+    url: '/admin/sysUser/update',
     method: 'post',
     data: data
   })
