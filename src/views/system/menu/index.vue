@@ -360,7 +360,8 @@ function reset() {
     isCache: "0",
     visible: true,
     status: "1",
-    permission: undefined
+    permission: undefined,
+    component: 'Layout'
   };
   proxy.resetForm("menuRef");
 }
