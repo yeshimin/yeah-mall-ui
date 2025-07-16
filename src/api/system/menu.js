@@ -40,7 +40,7 @@ export function treeselect() {
 // 根据角色ID查询菜单下拉树结构
 export function roleMenuTreeselect(roleId) {
   return request({
-    url: '/sysRole/queryResourceTree',
+    url: '/admin/sysRole/queryResourceTree',
     method: 'get',
     params: { roleId }
   })
