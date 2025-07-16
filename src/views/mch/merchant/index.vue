@@ -46,14 +46,31 @@
       v-model:limit="queryParams.size"
       @pagination="getList"
     />
+
+    <el-dialog v-model="createDialogVisible" title="创建商家" width="400px" @close="createDialogVisible = false">
+      <el-form :model="createForm" :rules="createFormRules" label-width="90px">
+        <el-form-item label="商家账号" prop="loginAccount">
+          <el-input v-model="createForm.loginAccount" placeholder="请输入商家账号" />
+        </el-form-item>
+        <el-form-item label="登录密码" prop="loginPassword">
+          <el-input v-model="createForm.loginPassword" placeholder="请输入登录密码" type="password" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="createDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="handleCreateConfirm">确 定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { listMerchant } from '@/api/mch/merchant'
+import { listMerchant, createMerchant } from '@/api/mch/merchant'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import SHA256 from 'crypto-js/sha256'
 
 const tableData = ref([])
 const loading = ref(false)
@@ -67,6 +84,13 @@ const queryParams = ref({
   current: 1,
   size: 10
 })
+
+const createDialogVisible = ref(false)
+const createForm = ref({ loginAccount: '', loginPassword: '' })
+const createFormRules = {
+  loginAccount: [ { required: true, message: '请输入商家账号', trigger: 'blur' } ],
+  loginPassword: [ { required: true, message: '请输入登录密码', trigger: 'blur' } ]
+}
 
 const filteredTableData = computed(() => tableData.value)
 
@@ -84,7 +108,25 @@ function handleSelectionChange(selection) {
   multiple.value = !selection.length
 }
 function handleAdd() {
-  // TODO: 打开新增弹窗
+  createForm.value = { loginAccount: '', loginPassword: '' }
+  createDialogVisible.value = true
+}
+function handleCreateConfirm() {
+  if (!createForm.value.loginAccount || !createForm.value.loginPassword) {
+    ElMessage.warning('请填写完整信息')
+    return
+  }
+  const data = {
+    ...createForm.value,
+    loginPassword: SHA256(createForm.value.loginPassword.trim()).toString()
+  }
+  createMerchant(data).then(res => {
+    ElMessage.success('创建成功')
+    createDialogVisible.value = false
+    getList()
+  }).catch(() => {
+    ElMessage.error('创建失败')
+  })
 }
 function handleUpdate() {
   // TODO: 打开编辑弹窗

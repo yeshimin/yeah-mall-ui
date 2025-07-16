@@ -8,3 +8,12 @@ export function listMerchant(query) {
     params: query
   })
 }
+
+// 创建商家
+export function createMerchant(data) {
+  return request({
+    url: '/admin/merchant/create',
+    method: 'post',
+    data
+  })
+}
