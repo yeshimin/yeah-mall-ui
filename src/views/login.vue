@@ -2,6 +2,12 @@
   <div class="login">
     <el-form ref="loginRef" :model="loginForm" :rules="loginRules" class="login-form">
       <h3 class="title">{{ title }}</h3>
+      <div class="login-type-switch">
+        <el-radio-group v-model="loginType" size="large">
+          <el-radio-button label="admin">管理员登录</el-radio-button>
+          <el-radio-button label="merchant">商家登录</el-radio-button>
+        </el-radio-group>
+      </div>
       <el-form-item prop="username">
         <el-input
           v-model="loginForm.username"
@@ -66,11 +72,11 @@
 
 <script setup>
 import { getCodeImg } from "@/api/login";
-import Cookies from "js-cookie";
 import { encrypt, decrypt } from "@/utils/jsencrypt";
 import useUserStore from '@/store/modules/user';
 import SHA256 from 'crypto-js/sha256';
 
+const loginType = ref('admin');
 const title = import.meta.env.VITE_APP_TITLE;
 const userStore = useUserStore();
 const route = useRoute();
@@ -107,21 +113,26 @@ function handleLogin() {
   proxy.$refs.loginRef.validate(valid => {
     if (valid) {
       loading.value = true;
-      // 勾选了需要记住密码设置在 cookie 中设置记住用户名和密码
+      // 记住密码仅用localStorage
       if (loginForm.value.rememberMe) {
-        Cookies.set("username", loginForm.value.username, { expires: 30 });
-        Cookies.set("password", encrypt(loginForm.value.password), { expires: 30 });
-        Cookies.set("rememberMe", loginForm.value.rememberMe, { expires: 30 });
+        localStorage.setItem("username", loginForm.value.username);
+        localStorage.setItem("password", encrypt(loginForm.value.password));
+        localStorage.setItem("rememberMe", loginForm.value.rememberMe);
+        localStorage.setItem("loginType", loginType.value);
       } else {
-        // 否则移除
-        Cookies.remove("username");
-        Cookies.remove("password");
-        Cookies.remove("rememberMe");
+        localStorage.removeItem("username");
+        localStorage.removeItem("password");
+        localStorage.removeItem("rememberMe");
+        localStorage.removeItem("loginType");
       }
       // 调用action的登录方法
       // 密码加密处理
-      loginForm.value.password = SHA256(loginForm.value.password.trim()).toString();
-      userStore.login(loginForm.value).then(() => {
+      const loginData = {
+        ...loginForm.value,
+        password: SHA256(loginForm.value.password.trim()).toString(),
+        loginType: loginType.value
+      };
+      userStore.login(loginData).then(() => {
         const query = route.query;
         const otherQueryParams = Object.keys(query).reduce((acc, cur) => {
           if (cur !== "redirect") {
@@ -143,7 +154,6 @@ function handleLogin() {
 
 function getCode() {
   getCodeImg().then(res => {
-    // captchaEnabled.value = res.captchaEnabled === undefined ? true : res.captchaEnabled;
     captchaEnabled.value = res.data.enabled;
     if (captchaEnabled.value) {
       codeUrl.value = res.data.image;
@@ -153,14 +163,19 @@ function getCode() {
 }
 
 function getCookie() {
-  const username = Cookies.get("username");
-  const password = Cookies.get("password");
-  const rememberMe = Cookies.get("rememberMe");
+  // 记住密码仅用localStorage
+  const username = localStorage.getItem("username");
+  const password = localStorage.getItem("password");
+  const rememberMe = localStorage.getItem("rememberMe");
+  const savedLoginType = localStorage.getItem("loginType");
   loginForm.value = {
-    username: username === undefined ? loginForm.value.username : username,
-    password: password === undefined ? loginForm.value.password : decrypt(password),
-    rememberMe: rememberMe === undefined ? false : Boolean(rememberMe)
+    username: username === null ? loginForm.value.username : username,
+    password: password === null ? loginForm.value.password : decrypt(password),
+    rememberMe: rememberMe === null ? false : rememberMe === 'true'
   };
+  if (savedLoginType) {
+    loginType.value = savedLoginType;
+  }
 }
 
 getCode();
@@ -180,6 +195,11 @@ getCookie();
   margin: 0px auto 30px auto;
   text-align: center;
   color: #707070;
+}
+
+.login-type-switch {
+  text-align: center;
+  margin-bottom: 20px;
 }
 
 .login-form {

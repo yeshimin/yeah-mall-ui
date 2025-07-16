@@ -1,7 +1,16 @@
-import { login, logout, getInfo } from '@/api/login'
+import { login, logout, getInfoByType } from '@/api/login'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import { isHttp, isEmpty } from "@/utils/validate"
 import defAva from '@/assets/images/profile.jpg'
+
+// 获取当前登录类型（admin/merchant）
+export function getLoginType() {
+  let loginType = 'admin';
+  try {
+    loginType = localStorage.getItem('loginType') || '';
+  } catch (e) {}
+  return loginType || 'admin';
+}
 
 const useUserStore = defineStore(
   'user',
@@ -21,8 +30,15 @@ const useUserStore = defineStore(
         const password = userInfo.password
         const code = userInfo.code
         const uuid = userInfo.uuid
+        const loginType = userInfo.loginType || 'admin'
+        // 调试：输出 loginType
+        console.log('set loginType:', loginType)
+        // 登录时强制写入localStorage，保证后续接口判断
+        try {
+          localStorage.setItem('loginType', loginType);
+        } catch (e) {}
         return new Promise((resolve, reject) => {
-          login(username, password, code, uuid).then(res => {
+          login(username, password, code, uuid, loginType).then(res => {
             setToken(res.data.token)
             this.token = res.data.token
             resolve()
@@ -33,8 +49,9 @@ const useUserStore = defineStore(
       },
       // 获取用户信息
       getInfo() {
+        const loginType = getLoginType();
         return new Promise((resolve, reject) => {
-          getInfo().then(res => {
+          getInfoByType(loginType).then(res => {
             const user = res.data.user
             let avatar = user.avatar || ""
             if (!isHttp(avatar)) {
