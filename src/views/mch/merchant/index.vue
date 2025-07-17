@@ -29,7 +29,7 @@
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" />
     </el-row>
 
-    <el-table v-loading="loading" :data="filteredTableData" @selection-change="handleSelectionChange">
+    <el-table v-loading="loading" :data="filteredTableData" @selection-change="handleSelectionChange" row-key="id">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column prop="id" label="ID" align="center" />
       <el-table-column prop="loginAccount" label="商家账号" align="center" />
@@ -87,7 +87,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { listMerchant, createMerchant, getMerchantDetail, updateMerchant } from '@/api/mch/merchant'
+import { listMerchant, createMerchant, getMerchantDetail, updateMerchant, deleteMerchant } from '@/api/mch/merchant'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -97,6 +97,7 @@ const tableData = ref([])
 const loading = ref(false)
 const showSearch = ref(true)
 const ids = ref([])
+const selectedRows = ref([]) // 新增，保存选中行对象
 const single = ref(true)
 const multiple = ref(true)
 const total = ref(0)
@@ -131,6 +132,7 @@ function resetQuery() {
 }
 function handleSelectionChange(selection) {
   ids.value = selection.map(item => item.id)
+  selectedRows.value = selection // 新增，保存选中对象
   single.value = selection.length !== 1
   multiple.value = !selection.length
 }
@@ -156,11 +158,20 @@ function handleCreateConfirm() {
   })
 }
 function handleUpdate(row) {
-  if (!row || !row.id) {
-    ElMessage.warning('请选择要编辑的商家')
-    return
+  let target = row
+  // 如果是点击表格上方按钮，row为undefined，取选中的唯一一条
+  if (!target) {
+    if (selectedRows.value.length !== 1) {
+      ElMessage.warning('请选择一个要编辑的商家')
+      return
+    }
+    target = selectedRows.value[0]
   }
-  getMerchantDetail(row.id).then(res => {
+  // if (!target || !target.id) {
+  //   ElMessage.warning('请选择要编辑的商家')
+  //   return
+  // }
+  getMerchantDetail(ids.value[0]).then(res => {
     editForm.value = { ...res.data, loginPassword: '' }
     editDialogVisible.value = true
   })
@@ -183,7 +194,33 @@ function handleEditConfirm() {
   }).catch(() => ElMessage.error('修改失败'))
 }
 function handleDelete(row) {
-  // TODO: 删除逻辑
+  let targets = []
+  // 操作列删除
+  if (row && row.id) {
+    targets = [row.id]
+  } else {
+    if (!ids.value.length) {
+      ElMessage.warning('请选择要删除的商家')
+      return
+    }
+    targets = ids.value
+  }
+  ElMessageBox.confirm(
+    `确认要删除选中的商家吗？`,
+    '提示',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(() => {
+    deleteMerchant(targets).then(() => {
+      ElMessage.success('删除成功')
+      getList()
+    }).catch(() => {
+      ElMessage.error('删除失败')
+    })
+  }).catch(() => {})
 }
 function getList() {
   loading.value = true
@@ -191,6 +228,9 @@ function getList() {
     tableData.value = res.data?.records || []
     total.value = res.data?.total || 0
     loading.value = false
+    // 清空多选
+    selectedRows.value = []
+    ids.value = []
   }).catch(() => {
     loading.value = false
   })

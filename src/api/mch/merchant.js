@@ -35,3 +35,12 @@ export function updateMerchant(data) {
     data
   })
 }
+
+// 删除商家（支持批量）
+export function deleteMerchant(ids) {
+  return request({
+    url: '/admin/merchant/delete',
+    method: 'post',
+    data: Array.isArray(ids) ? ids : [ids]
+  })
+}
