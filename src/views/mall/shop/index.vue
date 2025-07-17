@@ -247,7 +247,7 @@ function handleDelete(row) {
       ElMessage.success('删除成功')
       getList()
     }).catch(() => {
-      ElMessage.error('删除失败')
+    //   ElMessage.error('删除失败')
     })
   }).catch(() => {})
 }
