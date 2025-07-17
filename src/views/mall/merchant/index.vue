@@ -87,7 +87,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { listMerchant, createMerchant, getMerchantDetail, updateMerchant, deleteMerchant } from '@/api/mch/merchant'
+import { listMerchant, createMerchant, getMerchantDetail, updateMerchant, deleteMerchant } from '@/api/mall/merchant'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
