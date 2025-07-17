@@ -217,8 +217,7 @@ function handleDelete(row) {
     deleteMerchant(targets).then(() => {
       ElMessage.success('删除成功')
       getList()
-    }).catch(() => {
-      ElMessage.error('删除失败')
+    }).catch((err) => {
     })
   }).catch(() => {})
 }
