@@ -37,6 +37,12 @@
       <el-table-column prop="createTime" label="创建时间" align="center" />
       <el-table-column prop="updateBy" label="更新人" align="center" />
       <el-table-column prop="updateTime" label="更新时间" align="center" />
+      <el-table-column label="操作" width="180" align="center" class-name="small-padding fixed-width">
+        <template #default="scope">
+          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
+          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
+        </template>
+      </el-table-column>
     </el-table>
 
     <pagination
@@ -61,12 +67,27 @@
         <el-button type="primary" @click="handleCreateConfirm">确 定</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="editDialogVisible" title="编辑商家" width="400px" @close="editDialogVisible = false">
+      <el-form :model="editForm" :rules="editFormRules" label-width="90px">
+        <el-form-item label="商家账号" prop="loginAccount">
+          <el-input v-model="editForm.loginAccount" placeholder="请输入商家账号" />
+        </el-form-item>
+        <el-form-item label="登录密码" prop="loginPassword">
+          <el-input v-model="editForm.loginPassword" placeholder="如需重置请填写新密码" type="password" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="handleEditConfirm">确 定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { listMerchant, createMerchant } from '@/api/mch/merchant'
+import { listMerchant, createMerchant, getMerchantDetail, updateMerchant } from '@/api/mch/merchant'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -90,6 +111,12 @@ const createForm = ref({ loginAccount: '', loginPassword: '' })
 const createFormRules = {
   loginAccount: [ { required: true, message: '请输入商家账号', trigger: 'blur' } ],
   loginPassword: [ { required: true, message: '请输入登录密码', trigger: 'blur' } ]
+}
+
+const editDialogVisible = ref(false)
+const editForm = ref({ id: '', loginAccount: '', loginPassword: '' })
+const editFormRules = {
+  loginAccount: [ { required: true, message: '请输入商家账号', trigger: 'blur' } ]
 }
 
 const filteredTableData = computed(() => tableData.value)
@@ -128,10 +155,34 @@ function handleCreateConfirm() {
     ElMessage.error('创建失败')
   })
 }
-function handleUpdate() {
-  // TODO: 打开编辑弹窗
+function handleUpdate(row) {
+  if (!row || !row.id) {
+    ElMessage.warning('请选择要编辑的商家')
+    return
+  }
+  getMerchantDetail(row.id).then(res => {
+    editForm.value = { ...res.data, loginPassword: '' }
+    editDialogVisible.value = true
+  })
 }
-function handleDelete() {
+function handleEditConfirm() {
+  if (!editForm.value.loginAccount) {
+    ElMessage.warning('请输入商家账号')
+    return
+  }
+  const data = { ...editForm.value }
+  if (data.loginPassword) {
+    data.loginPassword = SHA256(data.loginPassword.trim()).toString()
+  } else {
+    delete data.loginPassword // 不修改密码时不传
+  }
+  updateMerchant(data).then(() => {
+    ElMessage.success('修改成功')
+    editDialogVisible.value = false
+    getList()
+  }).catch(() => ElMessage.error('修改失败'))
+}
+function handleDelete(row) {
   // TODO: 删除逻辑
 }
 function getList() {
