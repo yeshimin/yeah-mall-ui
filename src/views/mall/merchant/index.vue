@@ -223,13 +223,22 @@ function handleDelete(row) {
 }
 function getList() {
   loading.value = true
-  listMerchant(queryParams.value).then(res => {
+  // 构造 conditions_ 参数
+  let conditions = []
+  if (queryParams.value.loginAccount) {
+    conditions.push(`loginAccount:like:${queryParams.value.loginAccount}`)
+  }
+  const params = {
+    size: queryParams.value.size,
+    current: queryParams.value.current
+  }
+  if (conditions.length) {
+    params['conditions_'] = conditions.join(',')
+  }
+  listMerchant(params).then(res => {
     tableData.value = res.data?.records || []
     total.value = res.data?.total || 0
     loading.value = false
-    // 清空多选
-    selectedRows.value = []
-    ids.value = []
   }).catch(() => {
     loading.value = false
   })
