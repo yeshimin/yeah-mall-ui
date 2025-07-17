@@ -29,10 +29,16 @@
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" />
     </el-row>
 
-    <el-table v-loading="loading" :data="filteredTableData" @selection-change="handleSelectionChange" row-key="id">
+    <el-table
+      v-loading="loading"
+      :data="filteredTableData"
+      @selection-change="handleSelectionChange"
+      row-key="id"
+      default-expand-all
+      :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+    >
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column prop="id" label="ID" align="center" />
-      <el-table-column prop="name" label="分类名称" align="center" />
+      <el-table-column prop="name" label="分类名称" align="left" />
       <el-table-column prop="createTime" label="创建时间" align="center" />
       <el-table-column prop="status" label="状态" align="center">
         <template #default="scope">
@@ -59,6 +65,18 @@
 
     <el-dialog v-model="createDialogVisible" title="创建分类" width="400px" @close="createDialogVisible = false">
       <el-form :model="createForm" :rules="createFormRules" label-width="90px">
+        <el-form-item label="上级分类" prop="parentId">
+          <el-tree-select
+            v-model="createForm.parentId"
+            :data="categoryTree"
+            :props="{ value: 'id', label: 'name', children: 'children' }"
+            value-key="id"
+            placeholder="选择上级分类"
+            check-strictly
+            clearable
+            style="width: 100%"
+          />
+        </el-form-item>
         <el-form-item label="分类名称" prop="name">
           <el-input v-model="createForm.name" placeholder="请输入分类名称" />
         </el-form-item>
@@ -77,6 +95,18 @@
 
     <el-dialog v-model="editDialogVisible" title="编辑分类" width="400px" @close="editDialogVisible = false">
       <el-form :model="editForm" :rules="editFormRules" label-width="90px">
+        <el-form-item label="上级分类" prop="parentId">
+          <el-tree-select
+            v-model="editForm.parentId"
+            :data="categoryTree"
+            :props="{ value: 'id', label: 'name', children: 'children' }"
+            value-key="id"
+            placeholder="选择上级分类"
+            check-strictly
+            clearable
+            style="width: 100%"
+          />
+        </el-form-item>
         <el-form-item label="分类名称" prop="name">
           <el-input v-model="editForm.name" placeholder="请输入分类名称" />
         </el-form-item>
@@ -101,8 +131,10 @@ import { listCategory, createCategory, getCategoryDetail, updateCategory, delete
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { handleTree } from '@/utils/ruoyi'
 
 const tableData = ref([])
+const categoryTree = ref([])
 const loading = ref(false)
 const showSearch = ref(true)
 const ids = ref([])
@@ -117,15 +149,17 @@ const queryParams = ref({
 })
 
 const createDialogVisible = ref(false)
-const createForm = ref({ name: '', status: '1' })
+const createForm = ref({ parentId: null, name: '', status: '1' })
 const createFormRules = {
+  parentId: [ ],
   name: [ { required: true, message: '请输入分类名称', trigger: 'blur' } ],
   status: [ { required: true, message: '请选择状态', trigger: 'change' } ]
 }
 
 const editDialogVisible = ref(false)
-const editForm = ref({ id: '', name: '', status: '1' })
+const editForm = ref({ id: '', parentId: null, name: '', status: '1' })
 const editFormRules = {
+  parentId: [ ],
   name: [ { required: true, message: '请输入分类名称', trigger: 'blur' } ],
   status: [ { required: true, message: '请选择状态', trigger: 'change' } ]
 }
@@ -147,7 +181,7 @@ function handleSelectionChange(selection) {
   multiple.value = !selection.length
 }
 function handleAdd() {
-  createForm.value = { name: '', status: '1' }
+  createForm.value = { parentId: null, name: '', status: '1' }
   createDialogVisible.value = true
 }
 function handleCreateConfirm() {
@@ -228,7 +262,8 @@ function getList() {
     params['conditions_'] = conditions.join(',')
   }
   listCategory(params).then(res => {
-    tableData.value = res.data?.records || []
+    tableData.value = handleTree(res.data?.records || [], 'id', 'parentId', 'children')
+    categoryTree.value = handleTree(res.data?.records || [], 'id', 'parentId', 'children')
     total.value = res.data?.total || 0
     loading.value = false
   }).catch(() => {
