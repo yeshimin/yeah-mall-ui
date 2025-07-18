@@ -53,3 +53,12 @@ export function deleteCategory(ids) {
     data: ids
   })
 }
+
+// 查询商品分类列表（分页/条件查询）
+export function queryCategoryList(params) {
+  return request({
+    url: '/mch/productCategory/crud/query',
+    method: 'get',
+    params
+  })
+}

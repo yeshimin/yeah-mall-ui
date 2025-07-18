@@ -76,6 +76,7 @@
             check-strictly
             clearable
             style="width: 100%"
+            allow-clear
           />
         </el-form-item>
         <el-form-item label="分类名称" prop="name">
@@ -133,8 +134,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { getCategoryTree, createCategory, getCategoryDetail, updateCategory, deleteCategory } from '@/api/mall/category'
+import { ref, computed, onMounted, watch } from 'vue'
+import { getCategoryTree, createCategory, getCategoryDetail, updateCategory, deleteCategory, queryCategoryList } from '@/api/mall/category'
 import { queryShopList } from '@/api/mall/shop'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
@@ -202,22 +203,24 @@ function handleCreateConfirm() {
   if (!createForm.value.shopId) {
     createForm.value.shopId = localStorage.getItem('shopId')
   }
-  if (!createForm.value.shopId || !createForm.value.code || !createForm.value.name || !createForm.value.sort) {
-    ElMessage.warning('请填写完整信息')
-    return
-  }
-  // 只传递后端需要的字段
+  // 只在提交参数时处理 parentId
   const payload = {
     shopId: createForm.value.shopId,
-    parentId: createForm.value.parentId,
+    parentId: (createForm.value.parentId === null || createForm.value.parentId === undefined || createForm.value.parentId === '') ? 0 : createForm.value.parentId,
     code: createForm.value.code,
     name: createForm.value.name,
     sort: createForm.value.sort,
     remark: createForm.value.remark
   }
+  if (!payload.shopId || !payload.code || !payload.name || !payload.sort) {
+    ElMessage.warning('请填写完整信息')
+    return
+  }
   createCategory(payload).then(res => {
     ElMessage.success('创建成功')
     createDialogVisible.value = false
+    // 重置表单，避免 parentId 残留 0
+    createForm.value.parentId = null
     getList()
   }).catch(() => {
     ElMessage.error('创建失败')
@@ -233,8 +236,8 @@ function handleUpdate(row) {
     target = selectedRows.value[0]
   }
   getCategoryDetail(target.id).then(res => {
-    // 自动注入 shopId
-    editForm.value = { ...res.data, shopId: localStorage.getItem('shopId') }
+    // 自动注入 shopId，parentId 为 0 时转为 null 以便下拉框显示为空
+    editForm.value = { ...res.data, shopId: localStorage.getItem('shopId'), parentId: (res.data.parentId === 0 ? null : res.data.parentId) }
     editDialogVisible.value = true
   })
 }
@@ -242,23 +245,25 @@ function handleEditConfirm() {
   if (!editForm.value.shopId) {
     editForm.value.shopId = localStorage.getItem('shopId')
   }
-  if (!editForm.value.shopId || !editForm.value.code || !editForm.value.name || !editForm.value.sort) {
-    ElMessage.warning('请填写完整信息')
-    return
-  }
-  // 只传递后端需要的字段
+  // 只在提交参数时处理 parentId
   const payload = {
     id: editForm.value.id,
     shopId: editForm.value.shopId,
-    parentId: editForm.value.parentId,
+    parentId: (editForm.value.parentId === null || editForm.value.parentId === undefined || editForm.value.parentId === '') ? 0 : editForm.value.parentId,
     code: editForm.value.code,
     name: editForm.value.name,
     sort: editForm.value.sort,
     remark: editForm.value.remark
   }
+  if (!payload.shopId || !payload.code || !payload.name || !payload.sort) {
+    ElMessage.warning('请填写完整信息')
+    return
+  }
   updateCategory(payload).then(() => {
     ElMessage.success('修改成功')
     editDialogVisible.value = false
+    // 重置 parentId，避免下次弹窗残留 0
+    editForm.value.parentId = null
     getList()
   }).catch(() => ElMessage.error('修改失败'))
 }
@@ -290,16 +295,30 @@ function handleDelete(row) {
 }
 function getList() {
   loading.value = true
-  // tree 查询带上 shopId
   const shopId = localStorage.getItem('shopId')
-  getCategoryTree({ shopId, name: queryParams.value.name }).then(res => {
-    tableData.value = res.data || []
-    categoryTree.value = res.data || []
-    total.value = 0 // 树形结构无需分页
-    loading.value = false
-  }).catch(() => {
-    loading.value = false
-  })
+  // 判断是否有搜索条件
+  if (queryParams.value.name) {
+    // 有分类名称搜索时，调用 query 接口
+    const conditions = `name:like:${queryParams.value.name}`
+    queryCategoryList({ shopId, conditions_: conditions, current: queryParams.value.current, size: queryParams.value.size }).then(res => {
+      tableData.value = res.data?.records || []
+      total.value = res.data?.total || 0
+      categoryTree.value = [] // 搜索时不展示树
+      loading.value = false
+    }).catch(() => {
+      loading.value = false
+    })
+  } else {
+    // 无搜索条件时，展示树
+    getCategoryTree({ shopId }).then(res => {
+      tableData.value = res.data || []
+      categoryTree.value = res.data || []
+      total.value = 0 // 树形结构无需分页
+      loading.value = false
+    }).catch(() => {
+      loading.value = false
+    })
+  }
 }
 onMounted(async () => {
   let shopId = localStorage.getItem('shopId')
@@ -311,6 +330,18 @@ onMounted(async () => {
     }
   }
   getList()
+})
+// 弹窗关闭时重置 parentId
+watch(createDialogVisible, (val) => {
+  if (!val) {
+    createForm.value.parentId = null
+  }
+})
+// 弹窗关闭时重置 parentId
+watch(editDialogVisible, (val) => {
+  if (!val) {
+    editForm.value.parentId = null
+  }
 })
 </script>
 
