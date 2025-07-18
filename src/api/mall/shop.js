@@ -44,3 +44,12 @@ export function deleteShop(ids) {
     data: Array.isArray(ids) ? ids : [ids]
   })
 }
+
+// 查询店铺列表
+export function queryShopList(params) {
+  return request({
+    url: '/mch/shop/crud/query',
+    method: 'get',
+    params
+  })
+}

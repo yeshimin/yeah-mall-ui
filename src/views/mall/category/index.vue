@@ -39,14 +39,15 @@
     >
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column prop="name" label="分类名称" align="left" />
+      <el-table-column prop="code" label="分类编码" align="center" />
+      <el-table-column prop="sort" label="排序" align="center" />
+      <el-table-column prop="level" label="层级" align="center" />
+      <el-table-column prop="path" label="路径" align="center" />
+      <el-table-column prop="remark" label="备注" align="center" />
+      <el-table-column prop="createBy" label="创建人" align="center" />
       <el-table-column prop="createTime" label="创建时间" align="center" />
-      <el-table-column prop="status" label="状态" align="center">
-        <template #default="scope">
-          <el-tag :type="scope.row.status === '1' ? 'success' : 'info'">
-            {{ scope.row.status === '1' ? '启用' : '禁用' }}
-          </el-tag>
-        </template>
-      </el-table-column>
+      <el-table-column prop="updateBy" label="更新人" align="center" />
+      <el-table-column prop="updateTime" label="更新时间" align="center" />
       <el-table-column label="操作" width="180" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
@@ -80,11 +81,14 @@
         <el-form-item label="分类名称" prop="name">
           <el-input v-model="createForm.name" placeholder="请输入分类名称" />
         </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="createForm.status" placeholder="请选择状态">
-            <el-option label="启用" value="1" />
-            <el-option label="禁用" value="0" />
-          </el-select>
+        <el-form-item label="分类编码" prop="code">
+          <el-input v-model="createForm.code" placeholder="请输入分类编码" />
+        </el-form-item>
+        <el-form-item label="排序" prop="sort">
+          <el-input-number v-model="createForm.sort" :min="1" placeholder="请输入排序" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="createForm.remark" placeholder="请输入备注" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -107,14 +111,17 @@
             style="width: 100%"
           />
         </el-form-item>
+        <el-form-item label="分类编码" prop="code">
+          <el-input v-model="editForm.code" placeholder="请输入分类编码" />
+        </el-form-item>
         <el-form-item label="分类名称" prop="name">
           <el-input v-model="editForm.name" placeholder="请输入分类名称" />
         </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="editForm.status" placeholder="请选择状态">
-            <el-option label="启用" value="1" />
-            <el-option label="禁用" value="0" />
-          </el-select>
+        <el-form-item label="排序" prop="sort">
+          <el-input-number v-model="editForm.sort" :min="1" placeholder="请输入排序" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="editForm.remark" placeholder="请输入备注" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -127,7 +134,8 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { listCategory, createCategory, getCategoryDetail, updateCategory, deleteCategory } from '@/api/mall/category'
+import { getCategoryTree, createCategory, getCategoryDetail, updateCategory, deleteCategory } from '@/api/mall/category'
+import { queryShopList } from '@/api/mall/shop'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -149,19 +157,25 @@ const queryParams = ref({
 })
 
 const createDialogVisible = ref(false)
-const createForm = ref({ parentId: null, name: '', status: '1' })
+const createForm = ref({ shopId: '', parentId: null, code: '', name: '', sort: 1, remark: '' })
 const createFormRules = {
+  shopId: [ { required: true, message: '请选择店铺', trigger: 'blur' } ],
   parentId: [ ],
+  code: [ { required: true, message: '请输入分类编码', trigger: 'blur' } ],
   name: [ { required: true, message: '请输入分类名称', trigger: 'blur' } ],
-  status: [ { required: true, message: '请选择状态', trigger: 'change' } ]
+  sort: [ { required: true, message: '请输入排序', trigger: 'blur' } ],
+  remark: [ ]
 }
 
 const editDialogVisible = ref(false)
-const editForm = ref({ id: '', parentId: null, name: '', status: '1' })
+const editForm = ref({ id: '', shopId: '', parentId: null, code: '', name: '', sort: 1, remark: '' })
 const editFormRules = {
+  shopId: [ { required: true, message: '请选择店铺', trigger: 'blur' } ],
   parentId: [ ],
+  code: [ { required: true, message: '请输入分类编码', trigger: 'blur' } ],
   name: [ { required: true, message: '请输入分类名称', trigger: 'blur' } ],
-  status: [ { required: true, message: '请选择状态', trigger: 'change' } ]
+  sort: [ { required: true, message: '请输入排序', trigger: 'blur' } ],
+  remark: [ ]
 }
 
 const filteredTableData = computed(() => tableData.value)
@@ -181,15 +195,27 @@ function handleSelectionChange(selection) {
   multiple.value = !selection.length
 }
 function handleAdd() {
-  createForm.value = { parentId: null, name: '', status: '1' }
+  createForm.value = { shopId: localStorage.getItem('shopId'), parentId: null, code: '', name: '', sort: 1, remark: '' }
   createDialogVisible.value = true
 }
 function handleCreateConfirm() {
-  if (!createForm.value.name) {
-    ElMessage.warning('请填写分类名称')
+  if (!createForm.value.shopId) {
+    createForm.value.shopId = localStorage.getItem('shopId')
+  }
+  if (!createForm.value.shopId || !createForm.value.code || !createForm.value.name || !createForm.value.sort) {
+    ElMessage.warning('请填写完整信息')
     return
   }
-  createCategory(createForm.value).then(res => {
+  // 只传递后端需要的字段
+  const payload = {
+    shopId: createForm.value.shopId,
+    parentId: createForm.value.parentId,
+    code: createForm.value.code,
+    name: createForm.value.name,
+    sort: createForm.value.sort,
+    remark: createForm.value.remark
+  }
+  createCategory(payload).then(res => {
     ElMessage.success('创建成功')
     createDialogVisible.value = false
     getList()
@@ -207,16 +233,30 @@ function handleUpdate(row) {
     target = selectedRows.value[0]
   }
   getCategoryDetail(target.id).then(res => {
-    editForm.value = { ...res.data }
+    // 自动注入 shopId
+    editForm.value = { ...res.data, shopId: localStorage.getItem('shopId') }
     editDialogVisible.value = true
   })
 }
 function handleEditConfirm() {
-  if (!editForm.value.name) {
-    ElMessage.warning('请输入分类名称')
+  if (!editForm.value.shopId) {
+    editForm.value.shopId = localStorage.getItem('shopId')
+  }
+  if (!editForm.value.shopId || !editForm.value.code || !editForm.value.name || !editForm.value.sort) {
+    ElMessage.warning('请填写完整信息')
     return
   }
-  updateCategory(editForm.value).then(() => {
+  // 只传递后端需要的字段
+  const payload = {
+    id: editForm.value.id,
+    shopId: editForm.value.shopId,
+    parentId: editForm.value.parentId,
+    code: editForm.value.code,
+    name: editForm.value.name,
+    sort: editForm.value.sort,
+    remark: editForm.value.remark
+  }
+  updateCategory(payload).then(() => {
     ElMessage.success('修改成功')
     editDialogVisible.value = false
     getList()
@@ -250,27 +290,25 @@ function handleDelete(row) {
 }
 function getList() {
   loading.value = true
-  let conditions = []
-  if (queryParams.value.name) {
-    conditions.push(`name:like:${queryParams.value.name}`)
-  }
-  const params = {
-    size: queryParams.value.size,
-    current: queryParams.value.current
-  }
-  if (conditions.length) {
-    params['conditions_'] = conditions.join(',')
-  }
-  listCategory(params).then(res => {
-    tableData.value = handleTree(res.data?.records || [], 'id', 'parentId', 'children')
-    categoryTree.value = handleTree(res.data?.records || [], 'id', 'parentId', 'children')
-    total.value = res.data?.total || 0
+  const shopId = localStorage.getItem('shopId')
+  getCategoryTree({ shopId }).then(res => {
+    tableData.value = res.data || []
+    categoryTree.value = res.data || []
+    total.value = 0 // 树形结构无需分页
     loading.value = false
   }).catch(() => {
     loading.value = false
   })
 }
-onMounted(() => {
+onMounted(async () => {
+  let shopId = localStorage.getItem('shopId')
+  if (!shopId) {
+    const res = await queryShopList({})
+    if (res.data && res.data.records && res.data.records.length > 0) {
+      shopId = res.data.records[0].id
+      localStorage.setItem('shopId', shopId)
+    }
+  }
   getList()
 })
 </script>
