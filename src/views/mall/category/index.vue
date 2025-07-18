@@ -290,8 +290,9 @@ function handleDelete(row) {
 }
 function getList() {
   loading.value = true
+  // tree 查询带上 shopId
   const shopId = localStorage.getItem('shopId')
-  getCategoryTree({ shopId }).then(res => {
+  getCategoryTree({ shopId, name: queryParams.value.name }).then(res => {
     tableData.value = res.data || []
     categoryTree.value = res.data || []
     total.value = 0 // 树形结构无需分页

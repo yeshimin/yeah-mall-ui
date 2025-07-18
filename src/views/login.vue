@@ -75,6 +75,7 @@ import { getCodeImg } from "@/api/login";
 import { encrypt, decrypt } from "@/utils/jsencrypt";
 import useUserStore from '@/store/modules/user';
 import SHA256 from 'crypto-js/sha256';
+import { queryShopList } from '@/api/mall/shop'
 
 const loginType = ref('admin');
 const title = import.meta.env.VITE_APP_TITLE;
@@ -125,14 +126,24 @@ function handleLogin() {
         localStorage.removeItem("rememberMe");
         localStorage.removeItem("loginType");
       }
-      // 调用action的登录方法
       // 密码加密处理
       const loginData = {
         ...loginForm.value,
         password: SHA256(loginForm.value.password.trim()).toString(),
         loginType: loginType.value
       };
-      userStore.login(loginData).then(() => {
+      userStore.login(loginData).then(async () => {
+        // 仅 merchant 端登录后自动获取 shopId
+        if (loginType.value === 'merchant') {
+          try {
+            const res = await queryShopList({});
+            if (res.data && res.data.records && res.data.records.length > 0) {
+              localStorage.setItem('shopId', res.data.records[0].id)
+            }
+          } catch (e) {}
+        } else {
+          localStorage.removeItem('shopId')
+        }
         const query = route.query;
         const otherQueryParams = Object.keys(query).reduce((acc, cur) => {
           if (cur !== "redirect") {
