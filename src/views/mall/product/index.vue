@@ -161,7 +161,7 @@ const createFormRules = {
 }
 
 const editDialogVisible = ref(false)
-const editForm = ref({ id: '', name: '', categoryId: '' })
+const editForm = ref({ id: '', name: '', categoryId: '', specs: [] })
 const editFormRules = {
   name: [ { required: true, message: '请输入商品名称', trigger: 'blur' } ],
   categoryId: [ { required: true, message: '请选择所属分类', trigger: 'blur' } ]
@@ -211,8 +211,17 @@ function toggleOpt(specId, optId) {
   }
 }
 function isOptSelected(specId, optId) {
-  const spec = selectedSpecs.value.find(s => s.specId === specId)
-  return spec && spec.optIds.includes(optId)
+  // const optIds = editSelectedSpecs.value[specId] || []
+  // return optIds.includes(optId)
+  const spec = selectedSpecs.value.find(item => item.specId === specId)
+  return spec ? spec.optIds.includes(optId) : false
+}
+function isEditOptSelected(specId, optId) {
+  console.log('isEditOptSelected...specId: ' + specId + ', optId: ' + optId + ', editSelectedSpecs.value: ' + JSON.stringify(editSelectedSpecs.value))
+  const spec = editSelectedSpecs.value.find(item => item.specId == specId)
+  let r = spec ? spec.optIds.includes(optId) : false
+  console.log('r: ' + r);
+  return r;
 }
 function handleSpecTagClickOnly(specId) {
   activeSpecId.value = specId;
@@ -270,7 +279,10 @@ function handleCreateConfirm() {
     ElMessage.warning('请填写完整信息')
     return
   }
+
   createForm.value.specs = selectedSpecs.value.filter(s => s.optIds.length)
+  console.log('selectedSpecs.value: ', JSON.stringify(createForm.value.specs))
+
   createSpu({
     shopId: getShopId(),
     name: createForm.value.name,
@@ -299,14 +311,33 @@ function handleUpdate(row) {
     // 初始化表单数据
     editForm.value = { ...data };
     // 初始化规格选择状态
-    editSelectedSpecs.value = (data.specs || []).reduce((acc, spec) => {
-      acc[spec.specId] = spec.opts.map(opt => opt.optId);
-      return acc;
-    }, {});
+    editSelectedSpecs.value = (data.specs || []).map(spec => {
+      return {
+        specId: String(spec.specId),
+        optIds: spec.opts.map(opt => opt.optId)
+      }
+    });
+    console.log('editSelectedSpecs.value: ', JSON.stringify(editSelectedSpecs.value))
     // 设置默认选中的规格
     if (data.specs && data.specs.length) {
       editActiveSpecId.value = data.specs[0].specId;
     }
+
+  //   editSelectedSpecs.value = []
+    fetchSpecs().then(() => {
+      // 初始化规格数据
+      // if (row.specs && row.specs.length) {
+      //   // 初始化规格选择状态
+      //   editSelectedSpecs.value = data.specs.reduce((acc, spec) => {
+      //     acc[spec.specId] = spec.opts.map(opt => opt.optId);
+      //     return acc;
+      //   }, {})
+      //   if (editSpecs.value.length) {
+      //     editActiveSpecId.value = editSpecs.value[0].specId
+      //   }
+      // }
+  })
+
     // 数据加载完成后显示编辑弹窗
     editDialogVisible.value = true;
   }).catch(error => {
@@ -314,27 +345,16 @@ function handleUpdate(row) {
     // 即使接口调用失败也显示弹窗，避免用户操作受阻
     editDialogVisible.value = true;
   });
-  editSelectedSpecs.value = []
-  fetchSpecs().then(() => {
-    // 初始化规格数据
-    if (row.specs && row.specs.length) {
-      // 初始化规格选择状态
-      editSelectedSpecs.value = data.specs.reduce((acc, spec) => {
-        acc[spec.specId] = spec.opts.map(opt => opt.optId);
-        return acc;
-      }, {})
-      if (editSpecs.value.length) {
-        editActiveSpecId.value = editSpecs.value[0].specId
-      }
-    }
-  })
-  editDialogVisible.value = true
 }
 function handleEditConfirm() {
   if (!editForm.value.name || !editForm.value.categoryId) {
     ElMessage.warning('请填写完整信息')
     return
   }
+
+  editForm.value.specs = editSelectedSpecs.value.filter(s => s.optIds.length)
+  console.log('editForm.value.specs: ', JSON.stringify(editForm.value.specs))
+
   updateSpu(editForm.value).then(() => {
     ElMessage.success('修改成功')
     editDialogVisible.value = false
@@ -403,7 +423,8 @@ onMounted(() => {
 })
 
 function toggleEditOpt(specId, optId) {
-  let spec = editSelectedSpecs.value.find(s => s.specId === specId)
+  console.log('toggleEditOpt', specId, optId, JSON.stringify(editSelectedSpecs.value))
+  let spec = editSelectedSpecs.value.find(s => s.specId == specId)
   if (!spec) {
     spec = { specId, optIds: [] }
     editSelectedSpecs.value.push(spec)
@@ -415,9 +436,7 @@ function toggleEditOpt(specId, optId) {
     spec.optIds.push(optId)
   }
 }
-function isEditOptSelected(specId, optId) {
-  return editSelectedSpecs.value[specId]?.includes(optId) || false
-}
+
 </script>
 
 <style scoped>
