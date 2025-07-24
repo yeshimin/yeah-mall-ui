@@ -92,10 +92,31 @@
         <el-form-item label="商品名称" prop="name">
           <el-input v-model="editForm.name" placeholder="请输入商品名称" />
         </el-form-item>
-        <el-form-item label="所属分类" prop="categoryId">
+        <el-form-item label="商品分类" prop="categoryId">
           <el-tree-select v-model="editForm.categoryId" :data="categoryTree"
             :props="{ label: 'name', value: 'id', children: 'children' }" placeholder="请选择商品分类" check-strictly
             :render-after-expand="false" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="规格">
+          <div class="spec-container">
+            <div style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
+              <el-tag v-for="spec in specList" :key="spec.id"
+                :class="editActiveSpecId === spec.id ? 'active-spec-tag' : 'default-spec-tag'"
+                style="cursor: pointer; user-select: none; display: inline-flex; align-items: center; justify-content: center; padding: 6px 12px !important; margin: 0 8px 8px 0 !important; border-radius: 6px; transition: all 0.2s ease; font-weight: 400; font-size: 14px; line-height: normal; height: auto; transform: none; vertical-align: middle; overflow: visible; position: relative; top: 0;"
+                @click="() => handleEditSpecTagClick(spec.id)">
+                {{ spec.specName }}
+              </el-tag>
+            </div>
+            <el-divider style="margin: 10px 0 20px 0;" />
+            <div v-if="editActiveSpecId">
+              <el-check-tag v-for="opt in specOptMap[editActiveSpecId] || []" :key="opt.id"
+                :checked="isEditOptSelected(editActiveSpecId, opt.id)"
+                @change="checked => toggleEditOpt(editActiveSpecId, opt.id)"
+                style="margin: 0 8px 8px 0; padding: 6px 12px; border-radius: 6px; font-size: 14px; transition: all 0.2s ease;">
+                {{ opt.optName }}
+              </el-check-tag>
+            </div>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -108,7 +129,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { listSpu, createSpu, updateSpu, deleteSpu } from '@/api/mall/spu'
+import { listSpu, createSpu, updateSpu, deleteSpu, getSpuDetail } from '@/api/mall/spu'
 import { getCategoryTree } from '@/api/mall/category'
 import { listSpecDef, listSpecOptDef } from '@/api/mall/specDef'
 import RightToolbar from '@/components/RightToolbar/index.vue'
@@ -146,6 +167,8 @@ const editFormRules = {
   categoryId: [ { required: true, message: '请选择所属分类', trigger: 'blur' } ]
 }
 
+const editActiveSpecId = ref(null)
+const editSelectedSpecs = ref([])
 const categoryTree = ref([])
 const specList = ref([])
 const specOptMap = ref({}) // {specId: [选项列表]}
@@ -193,6 +216,9 @@ function isOptSelected(specId, optId) {
 }
 function handleSpecTagClickOnly(specId) {
   activeSpecId.value = specId;
+}
+function handleEditSpecTagClick(specId) {
+  editActiveSpecId.value = specId;
 }
 // 删除规格全选相关函数
 // function isSpecAllSelected(specId) {
@@ -267,8 +293,41 @@ function handleUpdate(row) {
     }
     target = selectedRows.value[0]
   }
-  // TODO: 获取详情接口
-  editForm.value = { ...target }
+  // 调用详情接口获取产品规格配置
+  getSpuDetail(row.id).then(res => {
+    const data = res.data || {};
+    // 初始化表单数据
+    editForm.value = { ...data };
+    // 初始化规格选择状态
+    editSelectedSpecs.value = (data.specs || []).reduce((acc, spec) => {
+      acc[spec.specId] = spec.opts.map(opt => opt.optId);
+      return acc;
+    }, {});
+    // 设置默认选中的规格
+    if (data.specs && data.specs.length) {
+      editActiveSpecId.value = data.specs[0].specId;
+    }
+    // 数据加载完成后显示编辑弹窗
+    editDialogVisible.value = true;
+  }).catch(error => {
+    console.error('获取产品详情失败:', error);
+    // 即使接口调用失败也显示弹窗，避免用户操作受阻
+    editDialogVisible.value = true;
+  });
+  editSelectedSpecs.value = []
+  fetchSpecs().then(() => {
+    // 初始化规格数据
+    if (row.specs && row.specs.length) {
+      // 初始化规格选择状态
+      editSelectedSpecs.value = data.specs.reduce((acc, spec) => {
+        acc[spec.specId] = spec.opts.map(opt => opt.optId);
+        return acc;
+      }, {})
+      if (editSpecs.value.length) {
+        editActiveSpecId.value = editSpecs.value[0].specId
+      }
+    }
+  })
   editDialogVisible.value = true
 }
 function handleEditConfirm() {
@@ -342,6 +401,23 @@ function getList() {
 onMounted(() => {
   getList()
 })
+
+function toggleEditOpt(specId, optId) {
+  let spec = editSelectedSpecs.value.find(s => s.specId === specId)
+  if (!spec) {
+    spec = { specId, optIds: [] }
+    editSelectedSpecs.value.push(spec)
+  }
+  const idx = spec.optIds.indexOf(optId)
+  if (idx > -1) {
+    spec.optIds.splice(idx, 1)
+  } else {
+    spec.optIds.push(optId)
+  }
+}
+function isEditOptSelected(specId, optId) {
+  return editSelectedSpecs.value[specId]?.includes(optId) || false
+}
 </script>
 
 <style scoped>
@@ -382,7 +458,7 @@ onMounted(() => {
   border-color: #409eff;
   color: #409eff;
 }
-.spec-container { max-height: 300px; overflow-y: auto; padding: 10px; }
+.spec-container { padding: 10px; }
 .active-spec-tag { background: #e6f0ff; color: #1890ff; border: 1px solid #b3d8ff; box-sizing: border-box; }
 .default-spec-tag { background: #f5f5f5; color: #333; border: 1px solid #e0e0e0; box-sizing: border-box; }
 .active-spec-tag:hover, .default-spec-tag:hover { transform: none !important; padding: 6px 16px !important; border-width: 1px !important; box-shadow: none !important; outline: none !important; }
@@ -392,7 +468,3 @@ onMounted(() => {
   color: #333;
 }
 </style>
-
-function handleSpecTagClickOnly(specId) {
-  activeSpecId.value = specId;
-}

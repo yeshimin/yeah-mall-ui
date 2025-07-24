@@ -32,4 +32,11 @@ export function deleteSpu(ids) {
     data: ids
   })
 }
-// 其它SPU相关接口可后续补充
+// 详情
+export function getSpuDetail(id) {
+  return request({
+    url: '/mch/productSpu/detail',
+    method: 'get',
+    params: { id }
+  })
+}
