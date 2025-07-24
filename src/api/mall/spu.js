@@ -3,7 +3,7 @@ import request from '@/utils/request'
 // 商品SPU列表
 export function listSpu(params) {
   return request({
-    url: '/mch/productSpu/crud/query',
+    url: '/mch/productSpu/query',
     method: 'get',
     params
   })

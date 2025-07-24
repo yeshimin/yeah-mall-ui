@@ -3,22 +3,13 @@
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" @submit.prevent>
       <el-form-item label="商品名称" prop="name">
-        <el-input
-          v-model="queryParams.name"
-          placeholder="请输入商品名称"
-          clearable
-          style="width: 200px"
-          @keyup.enter="handleQuery"
-        />
+        <el-input v-model="queryParams.name" placeholder="请输入商品名称" clearable style="width: 200px"
+          @keyup.enter="handleQuery" />
       </el-form-item>
-      <el-form-item label="所属分类" prop="category">
-        <el-input
-          v-model="queryParams.category"
-          placeholder="请输入所属分类"
-          clearable
-          style="width: 200px"
-          @keyup.enter="handleQuery"
-        />
+      <el-form-item label="所属分类" prop="categoryId">
+        <el-tree-select v-model="queryParams.categoryId" :data="categoryTree"
+          :props="{ label: 'name', value: 'id', children: 'children' }" placeholder="请选择商品分类" check-strictly
+          :render-after-expand="false" style="width: 200px" />
       </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -43,7 +34,7 @@
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column prop="id" label="ID" align="center" />
       <el-table-column prop="name" label="商品名称" align="center" />
-      <el-table-column prop="categoryId" label="分类ID" align="center" />
+      <el-table-column prop="categoryName" label="分类名称" align="center" />
       <el-table-column prop="createBy" label="创建人" align="center" />
       <el-table-column prop="createTime" label="创建时间" align="center" />
       <el-table-column prop="updateBy" label="更新人" align="center" />
@@ -56,25 +47,15 @@
       </el-table-column>
     </el-table>
 
-    <pagination
-      v-show="total > 0"
-      :total="total"
-      v-model:page="queryParams.current"
-      v-model:limit="queryParams.size"
-      @pagination="getList"
-    />
+    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.current" v-model:limit="queryParams.size"
+      @pagination="getList" />
 
     <el-dialog v-model="createDialogVisible" title="创建商品" width="600px" @close="createDialogVisible = false">
       <el-form :model="createForm" :rules="createFormRules" label-width="90px">
         <el-form-item label="商品分类" prop="categoryId">
-          <el-tree-select
-            v-model="createForm.categoryId"
-            :data="categoryTree"
-            :props="{ label: 'name', value: 'id', children: 'children' }"
-            placeholder="请选择商品分类"
-            check-strictly
-            :render-after-expand="false"
-            style="width: 100%" />
+          <el-tree-select v-model="createForm.categoryId" :data="categoryTree"
+            :props="{ label: 'name', value: 'id', children: 'children' }" placeholder="请选择商品分类" check-strictly
+            :render-after-expand="false" style="width: 100%" />
         </el-form-item>
         <el-form-item label="商品名称" prop="name">
           <el-input v-model="createForm.name" placeholder="请输入商品名称" />
@@ -82,25 +63,18 @@
         <el-form-item label="规格">
           <div class="spec-container">
             <div style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
-              <el-tag
-                v-for="spec in specList"
-                :key="spec.id"
+              <el-tag v-for="spec in specList" :key="spec.id"
                 :class="activeSpecId === spec.id ? 'active-spec-tag' : 'default-spec-tag'"
                 style="cursor: pointer; user-select: none; display: inline-flex; align-items: center; justify-content: center; padding: 6px 12px !important; margin: 0 8px 8px 0 !important; border-radius: 6px; transition: all 0.2s ease; font-weight: 400; font-size: 14px; line-height: normal; height: auto; transform: none; vertical-align: middle; overflow: visible; position: relative; top: 0;"
-                @click="() => handleSpecTagClickOnly(spec.id)"
-              >
+                @click="() => handleSpecTagClickOnly(spec.id)">
                 {{ spec.specName }}
               </el-tag>
             </div>
             <el-divider style="margin: 10px 0 20px 0;" />
             <div v-if="activeSpecId">
-              <el-check-tag
-                v-for="opt in specOptMap[activeSpecId] || []"
-                :key="opt.id"
-                :checked="isOptSelected(activeSpecId, opt.id)"
-                @change="checked => toggleOpt(activeSpecId, opt.id)"
-                style="margin: 0 8px 8px 0; padding: 6px 12px; border-radius: 6px; font-size: 14px; transition: all 0.2s ease;"
-              >
+              <el-check-tag v-for="opt in specOptMap[activeSpecId] || []" :key="opt.id"
+                :checked="isOptSelected(activeSpecId, opt.id)" @change="checked => toggleOpt(activeSpecId, opt.id)"
+                style="margin: 0 8px 8px 0; padding: 6px 12px; border-radius: 6px; font-size: 14px; transition: all 0.2s ease;">
                 {{ opt.optName }}
               </el-check-tag>
             </div>
@@ -113,13 +87,15 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="editDialogVisible" title="编辑商品" width="400px" @close="editDialogVisible = false">
+    <el-dialog v-model="editDialogVisible" title="编辑商品" width="600px" @close="editDialogVisible = false">
       <el-form :model="editForm" :rules="editFormRules" label-width="90px">
         <el-form-item label="商品名称" prop="name">
           <el-input v-model="editForm.name" placeholder="请输入商品名称" />
         </el-form-item>
-        <el-form-item label="所属分类" prop="category">
-          <el-input v-model="editForm.category" placeholder="请输入所属分类" />
+        <el-form-item label="所属分类" prop="categoryId">
+          <el-tree-select v-model="editForm.categoryId" :data="categoryTree"
+            :props="{ label: 'name', value: 'id', children: 'children' }" placeholder="请选择商品分类" check-strictly
+            :render-after-expand="false" style="width: 100%" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -151,7 +127,7 @@ const total = ref(0
 )
 const queryParams = ref({
   name: '',
-  category: '',
+  categoryId: '',
   current: 1,
   size: 10
 })
@@ -167,7 +143,7 @@ const editDialogVisible = ref(false)
 const editForm = ref({ id: '', name: '', categoryId: '' })
 const editFormRules = {
   name: [ { required: true, message: '请输入商品名称', trigger: 'blur' } ],
-  categoryId: [ { required: true, message: '请输入所属分类', trigger: 'blur' } ]
+  categoryId: [ { required: true, message: '请选择所属分类', trigger: 'blur' } ]
 }
 
 const categoryTree = ref([])
@@ -177,6 +153,8 @@ const activeSpecId = ref(null)
 const selectedSpecs = ref([]) // [{specId, optIds: []}]
 
 const filteredTableData = computed(() => tableData.value)
+
+fetchCategoryTree()
 
 // 获取分类树
 async function fetchCategoryTree() {
@@ -246,7 +224,7 @@ function handleQuery() {
 }
 function resetQuery() {
   queryParams.value.name = ''
-  queryParams.value.category = ''
+  queryParams.value.categoryId = ''
   handleQuery()
 }
 function handleSelectionChange(selection) {
@@ -258,7 +236,6 @@ function handleSelectionChange(selection) {
 function handleAdd() {
   createForm.value = { name: '', categoryId: '', specs: [] }
   selectedSpecs.value = []
-  fetchCategoryTree()
   fetchSpecs()
   createDialogVisible.value = true
 }
@@ -349,6 +326,10 @@ function getList() {
   }
   if (conditions.length) {
     params['conditions_'] = conditions.join(',')
+  }
+  // categoryId
+  if (queryParams.value.categoryId) {
+    params['categoryId'] = queryParams.value.categoryId
   }
   listSpu(params).then(res => {
     tableData.value = res.data?.records || []
