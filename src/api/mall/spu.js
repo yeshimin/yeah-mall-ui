@@ -1,45 +1,35 @@
 import request from '@/utils/request'
 
-// 查询商品SPU列表
+// 商品SPU列表
 export function listSpu(params) {
   return request({
-    url: '/mall/spu/list',
+    url: '/mch/productSpu/crud/query',
     method: 'get',
     params
   })
 }
-
-// 新增商品SPU
+// 新增SPU
 export function createSpu(data) {
   return request({
-    url: '/mall/spu/create',
+    url: '/mch/productSpu/create',
     method: 'post',
     data
   })
 }
-
-// 修改商品SPU
+// 编辑SPU
 export function updateSpu(data) {
   return request({
-    url: '/mall/spu/update',
+    url: '/mch/productSpu/update',
     method: 'post',
     data
   })
 }
-
-// 删除商品SPU
+// 删除SPU（支持批量）
 export function deleteSpu(ids) {
   return request({
-    url: '/mall/spu/delete',
+    url: '/mch/productSpu/delete',
     method: 'post',
     data: ids
   })
 }
-
-// 查询商品SPU详情
-export function getSpuDetail(id) {
-  return request({
-    url: `/mall/spu/detail/${id}`,
-    method: 'get'
-  })
-}
+// 其它SPU相关接口可后续补充
