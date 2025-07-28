@@ -40,3 +40,11 @@ export function getSpuDetail(id) {
     params: { id }
   })
 }
+// 查询规格
+export function querySpec(params) {
+  return request({
+    url: '/mch/productSpu/querySpec',
+    method: 'get',
+    params
+  })
+}

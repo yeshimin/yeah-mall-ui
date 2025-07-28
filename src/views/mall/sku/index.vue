@@ -36,14 +36,20 @@
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="handleClose">
       <el-form :model="skuForm" :rules="formRules" label-width="90px">
-        <el-form-item label="商品ID" prop="spuId">
-          <el-input v-model="skuForm.spuId" disabled />
+        <el-form-item label="名称" prop="name">
+          <el-input v-model="skuForm.name" placeholder="请输入名称" />
         </el-form-item>
-        <el-form-item label="商品名称" prop="name">
-          <el-input v-model="skuForm.name" placeholder="请输入商品名称" />
-        </el-form-item>
-        <el-form-item label="规格编码" prop="specCode">
-          <el-input v-model="skuForm.specCode" placeholder="请输入规格编码" />
+        <!-- 移除规格编码字段 -->
+        <!-- 新增规格选择区域 -->
+        <el-form-item label="规格" prop="optIds">
+          <div v-if="loadingSpec" class="spec-loading">加载规格中...</div>
+          <div v-else-if="specOptions.length === 0" class="spec-empty">暂无规格数据</div>
+          <div v-else v-for="(spec, index) in specOptions" :key="index" class="spec-item">
+            <span class="spec-label">{{ spec.specName }}:</span>
+            <el-select v-model="skuForm.optIds[index]" placeholder="请选择{{ spec.specName }}" class="spec-select" :disabled="loadingSpec">
+              <el-option v-for="opt in spec.opts" :key="opt.optId" :label="opt.optName" :value="opt.optId" />
+            </el-select>
+          </div>
         </el-form-item>
         <el-form-item label="销售价格" prop="price">
           <el-input v-model="skuForm.price" type="number" placeholder="请输入销售价格" />
@@ -66,7 +72,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
-import { getSkuList, saveSku, deleteSku } from '@/api/mall/sku'
+import { getSkuList, saveSku, updateSku, deleteSku } from '@/api/mall/sku'
+import { querySpec } from '@/api/mall/spu'
 
 const route = useRoute()
 const router = useRouter()
@@ -83,18 +90,38 @@ const queryParams = ref({
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const skuForm = ref({
-  id: '',
+  skuId: '',
   spuId: '',
   name: '',
-  specCode: '',
   price: 0,
-  stock: 0
+  stock: 0,
+  optIds: [] // 存储选择的规格选项ID
 })
+const specOptions = ref([]) // 存储从API获取的规格数据
+const loadingSpec = ref(false)
 const formRules = {
-  name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
-  specCode: [{ required: true, message: '请输入规格编码', trigger: 'blur' }],
+  name: [{ required: false, message: '请输入名称', trigger: 'blur' }],
   price: [{ required: true, message: '请输入销售价格', trigger: 'blur' }],
-  stock: [{ required: true, message: '请输入库存数量', trigger: 'blur' }]
+  stock: [{ required: true, message: '请输入库存数量', trigger: 'blur' }],
+  optIds: [{
+    required: true,
+    type: 'array',
+    validator: (rule, value, callback) => {
+      if (specOptions.value.length === 0) {
+        return callback() // 无规格时不验证
+      }
+      if (!value || value.length !== specOptions.value.length) {
+        return callback(new Error('请选择所有规格选项'))
+      }
+      // 检查是否所有选项都已选择
+      const allSelected = value.every(id => id !== undefined && id !== null && id !== '')
+      if (!allSelected) {
+        return callback(new Error('请选择所有规格选项'))
+      }
+      callback()
+    },
+    trigger: 'change'
+  }]
 }
 const ids = ref([])
 const selectedRows = ref([])
@@ -132,18 +159,44 @@ const resetQuery = () => {
 
 const handleAdd = () => {
   dialogTitle.value = '新增SKU'
-  skuForm.value = { id: '', spuId: queryParams.value.spuId, name: '', specCode: '', price: 0, stock: 0 }
+  skuForm.value = { skuId: '', spuId: queryParams.value.spuId, name: '', price: 0, stock: 0, optIds: [] }
+  specOptions.value = []
+  loadingSpec.value = true
+  // 获取规格选项
+  querySpec({ shopId: getShopId(), spuId: queryParams.value.spuId })
+    .then(res => {
+      specOptions.value = res.data
+      // 初始化optIds数组长度与规格数量一致
+      skuForm.value.optIds = specOptions.value.map(spec => spec.opts && spec.opts.length > 0 ? spec.opts[0].optId : '')
+      loadingSpec.value = false
+    })
+    .catch(() => {
+      ElMessage.error('获取规格失败，请重试')
+      loadingSpec.value = false
+    })
   dialogVisible.value = true
 }
-
 const handleUpdate = (row) => {
   dialogTitle.value = '编辑SKU'
-  skuForm.value = { ...row }
+  skuForm.value = { ...row, skuId: row.id, optIds: row.optIds ? row.optIds.split(',').map(Number) : [] }
+  specOptions.value = []
+  loadingSpec.value = true
+  // 获取规格选项
+  querySpec({ shopId: getShopId(), spuId: row.spuId })
+    .then(res => {
+      specOptions.value = res.data
+      loadingSpec.value = false
+    })
+    .catch(() => {
+      ElMessage.error('获取规格失败，请重试')
+      loadingSpec.value = false
+    })
   dialogVisible.value = true
 }
 
 const handleSubmit = () => {
-  saveSku({ ...skuForm.value, shopId: getShopId() }).then(() => {
+  const submitFunc = skuForm.value.id ? updateSku : saveSku;
+submitFunc({ ...skuForm.value, shopId: getShopId() }).then(() => {
     ElMessage.success('保存成功')
     dialogVisible.value = false
     getList()
@@ -194,5 +247,25 @@ function getShopId() {
 <style scoped>
 .app-container {
   padding: 20px;
+}
+/* 新增规格样式 */
+.spec-loading,
+.spec-empty {
+  padding: 10px;
+  color: #606266;
+  text-align: center;
+}
+.spec-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.spec-label {
+  width: 80px;
+  text-align: right;
+  margin-right: 10px;
+}
+.spec-select {
+  width: 220px;
 }
 </style>

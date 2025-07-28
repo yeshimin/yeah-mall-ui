@@ -10,7 +10,15 @@ export function getSkuList(params) {
 
 export function saveSku(data) {
   return request({
-    url: '/mch/productSku/crud/save',
+    url: '/mch/productSku/create',
+    method: 'post',
+    data
+  });
+}
+
+export function updateSku(data) {
+  return request({
+    url: '/mch/productSku/update',
     method: 'post',
     data
   });
