@@ -1,8 +1,11 @@
 <template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" @submit.prevent>
-      <el-form-item label="SKU编码" prop="skuCode">
-        <el-input v-model="queryParams.skuCode" placeholder="请输入SKU编码" clearable style="width: 200px" @keyup.enter="handleQuery" />
+      <el-form-item label="名称" prop="name">
+        <el-input v-model="queryParams.name" placeholder="请输入名称" clearable style="width: 200px" />
+      </el-form-item>
+      <el-form-item label="规格编码" prop="specCode">
+        <el-input v-model="queryParams.specCode" placeholder="请输入规格编码" clearable style="width: 200px" />
       </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
@@ -20,7 +23,7 @@
     <el-table v-loading="loading" :data="tableData" @selection-change="handleSelectionChange" row-key="id">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column prop="id" label="ID" align="center" />
-      <el-table-column prop="name" label="商品名称" align="center" />
+      <el-table-column prop="name" label="名称" align="center" />
       <el-table-column prop="specCode" label="规格编码" align="center" />
       <el-table-column prop="price" label="销售价格" align="center" />
       <el-table-column prop="stock" label="库存数量" align="center" />
@@ -84,7 +87,8 @@ const total = ref(0)
 const queryParams = ref({
   current: 1,
   size: 10,
-  skuCode: '',
+  name: '',
+  specCode: '',
   spuId: ''
 })
 const dialogVisible = ref(false)
@@ -138,7 +142,23 @@ onMounted(() => {
 
 const getList = () => {
   loading.value = true
-  getSkuList({ ...queryParams.value, shopId: getShopId() }).then(res => {
+  // 构造conditions_参数支持模糊搜索
+  const params = { ...queryParams.value, shopId: getShopId() }
+  const conditions = []
+  if (params.name) {
+    conditions.push(`name:like:${params.name}`)
+  }
+  if (params.specCode) {
+    conditions.push(`specCode:like:${params.specCode}`)
+  }
+  // 如果有条件查询，则使用conditions_参数
+  if (conditions.length > 0) {
+    params.conditions_ = conditions.join(';')
+    // 删除原有的查询参数
+    delete params.name
+    delete params.specCode
+  }
+  getSkuList(params).then(res => {
     tableData.value = res.data.records
     total.value = res.data.total
     loading.value = false
@@ -246,11 +266,11 @@ const handleDelete = (row) => {
 // Example fix if there was a watch like:
 // watch(() => queryParams.value, handleQuery)
 // Changed to:
-watchEffect(() => {
-  if (queryParams.value.spuId) {
-    getList()
-  }
-})
+// watchEffect(() => {
+//   if (queryParams.value.spuId) {
+//     getList()
+//   }
+// })
 
 function getShopId() {
   return localStorage.getItem('shopId') || ''
