@@ -48,6 +48,18 @@ export const constantRoutes = [
     hidden: true
   },
   {
+    path: '/mall/sku',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mall/sku/index.vue'),
+        name: 'SkuManage',
+        meta: { title: 'SKU管理', icon: 'price-tag' }
+      }
+    ]
+  },
+  {
     path: "/:pathMatch(.*)*",
     component: () => import('@/views/error/404'),
     hidden: true

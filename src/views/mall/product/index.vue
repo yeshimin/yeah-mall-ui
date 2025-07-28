@@ -39,12 +39,13 @@
       <el-table-column prop="createTime" label="创建时间" align="center" />
       <el-table-column prop="updateBy" label="更新人" align="center" />
       <el-table-column prop="updateTime" label="更新时间" align="center" />
-      <el-table-column label="操作" width="180" align="center" class-name="small-padding fixed-width">
-        <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
-        </template>
-      </el-table-column>
+      <el-table-column label="操作" width="260" align="center" class-name="small-padding fixed-width">
+  <template #default="scope">
+    <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
+    <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
+    <el-button link type="primary" icon="PriceTag" @click="handleSkuManage(scope.row.id)">SKU管理</el-button>
+  </template>
+</el-table-column>
     </el-table>
 
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.current" v-model:limit="queryParams.size"
@@ -135,7 +136,8 @@ import { listSpecDef, listSpecOptDef } from '@/api/mall/specDef'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Close, CircleCheck } from '@element-plus/icons-vue'
+import { Close, CircleCheck, PriceTag } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
 
 const tableData = ref([])
 const loading = ref(false)
@@ -146,6 +148,8 @@ const single = ref(true)
 const multiple = ref(true)
 const total = ref(0
 )
+const router = useRouter()
+
 const queryParams = ref({
   name: '',
   categoryId: '',
@@ -361,6 +365,11 @@ function handleEditConfirm() {
     getList()
   }).catch(() => ElMessage.error('修改失败'))
 }
+function handleSkuManage(spuId) {
+  // 直接使用路径导航确保兼容性
+  router.push({ path: '/mall/sku', query: { spuId } })
+}
+
 function handleDelete(row) {
   let targets = []
   if (row && row.id) {
