@@ -72,7 +72,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
-import { getSkuList, saveSku, updateSku, deleteSku } from '@/api/mall/sku'
+import { getSkuList, saveSku, updateSku, deleteSku, getSkuDetail } from '@/api/mall/sku'
 import { querySpec } from '@/api/mall/spu'
 
 const route = useRoute()
@@ -181,16 +181,29 @@ const handleUpdate = (row) => {
   skuForm.value = { ...row, skuId: row.id, optIds: row.optIds ? row.optIds.split(',').map(Number) : [] }
   specOptions.value = []
   loadingSpec.value = true
-  // 获取规格选项
-  querySpec({ shopId: getShopId(), spuId: row.spuId })
-    .then(res => {
-      specOptions.value = res.data
-      loadingSpec.value = false
-    })
-    .catch(() => {
-      ElMessage.error('获取规格失败，请重试')
-      loadingSpec.value = false
-    })
+  // 获取SKU详情
+  getSkuDetail(row.id).then(detailRes => {
+    // 获取规格选项
+    querySpec({ shopId: getShopId(), spuId: row.spuId })
+      .then(res => {
+        specOptions.value = res.data
+        // 根据SKU详情设置optIds的默认值
+        if (detailRes.data && detailRes.data.specs) {
+          skuForm.value.optIds = detailRes.data.specs.map(spec => spec.optId)
+        } else {
+          // 如果没有规格信息，则默认选中每个规格的第一个选项
+          skuForm.value.optIds = specOptions.value.map(spec => spec.opts && spec.opts.length > 0 ? spec.opts[0].optId : '')
+        }
+        loadingSpec.value = false
+      })
+      .catch(() => {
+        ElMessage.error('获取规格失败，请重试')
+        loadingSpec.value = false
+      })
+  }).catch(() => {
+    ElMessage.error('获取SKU详情失败，请重试')
+    loadingSpec.value = false
+  })
   dialogVisible.value = true
 }
 

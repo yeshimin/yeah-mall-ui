@@ -31,3 +31,12 @@ export function deleteSku(ids) {
     data: ids
   });
 }
+
+// SKU详情
+export function getSkuDetail(id) {
+  return request({
+    url: '/mch/productSku/detail',
+    method: 'get',
+    params: { id }
+  });
+}
