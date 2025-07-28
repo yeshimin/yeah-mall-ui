@@ -24,9 +24,10 @@ export function updateSku(data) {
   });
 }
 
-export function deleteSku(id) {
+export function deleteSku(ids) {
   return request({
-    url: `/mch/productSku/crud/delete/${id}`,
-    method: 'delete'
+    url: '/mch/productSku/delete',
+    method: 'post',
+    data: ids
   });
 }

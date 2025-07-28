@@ -220,7 +220,7 @@ const handleDelete = (row) => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    deleteSku({ id: row.id, shopId: getShopId() }).then(() => {
+    deleteSku([row.id]).then(() => {
       ElMessage.success('删除成功')
       getList()
     }).catch(() => {
