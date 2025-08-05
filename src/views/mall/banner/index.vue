@@ -98,7 +98,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { createBanner, getBannerDetail, updateBanner, deleteBanner, queryBannerList, createBannerWithFile, updateBannerWithFile } from '@/api/mall/banner'
+import { getBannerDetail, deleteBanner, queryBannerList, createBannerWithFile, updateBannerWithFile } from '@/api/mall/banner'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'

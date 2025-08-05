@@ -1,23 +1,5 @@
 import request from '@/utils/request'
 
-// 查询Banner列表
-export function listBanner(params) {
-  return request({
-    url: '/mall/banner/list',
-    method: 'get',
-    params
-  })
-}
-
-// 新增Banner
-export function createBanner(data) {
-  return request({
-    url: '/mch/banner/create',
-    method: 'post',
-    data
-  })
-}
-
 // 新增Banner（文件上传）
 export function createBannerWithFile(shopId, file) {
   const formData = new FormData();
@@ -28,15 +10,6 @@ export function createBannerWithFile(shopId, file) {
     url: '/mch/banner/create',
     method: 'post',
     data: formData
-  })
-}
-
-// 修改Banner
-export function updateBanner(data) {
-  return request({
-    url: '/mall/banner/update',
-    method: 'post',
-    data
   })
 }
 
