@@ -12,9 +12,22 @@ export function listBanner(params) {
 // 新增Banner
 export function createBanner(data) {
   return request({
-    url: '/mall/banner/create',
+    url: '/mch/banner/create',
     method: 'post',
     data
+  })
+}
+
+// 新增Banner（文件上传）
+export function createBannerWithFile(shopId, file) {
+  const formData = new FormData();
+  formData.append('shopId', shopId);
+  formData.append('file', file);
+  
+  return request({
+    url: '/mch/banner/create',
+    method: 'post',
+    data: formData
   })
 }
 

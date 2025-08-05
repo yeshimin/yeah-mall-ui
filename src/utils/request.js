@@ -37,6 +37,13 @@ service.interceptors.request.use(config => {
     config.url = url;
   }
   if (!isRepeatSubmit && (config.method === 'post' || config.method === 'put')) {
+    // 检查是否为FormData对象，如果是则跳过防重复提交验证
+    if (config.data instanceof FormData) {
+      // 删除Content-Type头部，让浏览器自动设置正确的Content-Type（包括boundary参数）
+      delete config.headers['Content-Type'];
+      return config;
+    }
+    
     const requestObj = {
       url: config.url,
       data: typeof config.data === 'object' ? JSON.stringify(config.data) : config.data,

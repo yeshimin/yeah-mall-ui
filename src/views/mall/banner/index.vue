@@ -38,6 +38,8 @@
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" align="center" />
       <el-table-column prop="createBy" label="创建人" align="center" />
+      <el-table-column prop="updateTime" label="更新时间" align="center" />
+      <el-table-column prop="updateBy" label="更新人" align="center" />
       <el-table-column label="操作" width="180" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
@@ -54,10 +56,17 @@
       @pagination="getList"
     />
 
-    <el-dialog v-model="createDialogVisible" title="创建Banner" width="400px" @close="createDialogVisible = false">
-      <el-form :model="createForm" :rules="createFormRules" label-width="90px">
+    <el-dialog :title="'添加Banner'" v-model="createDialogVisible" width="500px" append-to-body>
+      <el-form ref="createFormRef" :model="createForm" :rules="createFormRules" label-width="80px">
         <el-form-item label="图片" prop="imageUrl">
-          <el-input v-model="createForm.imageUrl" placeholder="请输入图片文件key" />
+          <input type="file" ref="fileInputRef" @change="handleFileSelect" accept="image/*" />
+          <div class="el-upload__tip">
+            只能上传jpg/png文件，且不超过5MB
+          </div>
+          <div v-if="fileList.length > 0" class="file-list">
+            <span>{{ fileList[0].name }}</span>
+            <el-button type="danger" link @click="handleFileRemove">删除</el-button>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -82,7 +91,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { createBanner, getBannerDetail, updateBanner, deleteBanner, queryBannerList } from '@/api/mall/banner'
+import { createBanner, getBannerDetail, updateBanner, deleteBanner, queryBannerList, createBannerWithFile } from '@/api/mall/banner'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -106,6 +115,10 @@ const createForm = ref({ imageUrl: '' })
 const createFormRules = {
   imageUrl: [ { required: true, message: '请输入图片文件key', trigger: 'blur' } ]
 }
+
+// 文件上传相关
+const fileInputRef = ref()
+const fileList = ref([])
 
 const editDialogVisible = ref(false)
 const editForm = ref({ id: '', imageUrl: '' })
@@ -148,21 +161,63 @@ function handleSelectionChange(selection) {
   single.value = selection.length !== 1
   multiple.value = !selection.length
 }
+// 文件上传处理函数
+function handleFileSelect(event) {
+  const file = event.target.files[0]
+  if (!file) return
+  
+  // 验证文件类型和大小
+  const isImage = file.type.startsWith('image/')
+  // 支持的图片格式扩展名
+  const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']
+  const fileExtension = file.name.split('.').pop().toLowerCase()
+  const isAllowedExtension = allowedExtensions.includes(fileExtension)
+  const isLt5M = file.size / 1024 / 1024 < 5
+  
+  if (!isImage && !isAllowedExtension) {
+    ElMessage.error('只能上传图片文件(JPG, JPEG, PNG, GIF, BMP, WebP, SVG)!')
+    return false
+  }
+  
+  if (!isLt5M) {
+    ElMessage.error('上传图片大小不能超过 5MB!')
+    return false
+  }
+  
+  // 保存文件到列表
+  fileList.value = [file]
+  
+  // 同时更新表单字段以通过验证
+  createForm.value.imageUrl = file.name
+}
+
+function handleFileRemove() {
+  fileList.value = []
+  createForm.value.imageUrl = ''
+  // 清空文件输入框
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
 function handleAdd() {
   createForm.value = { imageUrl: '' }
+  fileList.value = []
+  // 清空文件输入框
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
   createDialogVisible.value = true
 }
 function handleCreateConfirm() {
-  if (!createForm.value.imageUrl) {
-    ElMessage.warning('请填写图片文件key')
+  if (fileList.value.length === 0) {
+    ElMessage.warning('请上传图片')
     return
   }
-  // 添加shopId到创建参数中
-  const createParams = {
-    ...createForm.value,
-    shopId: getShopId()
-  }
-  createBanner(createParams).then(res => {
+  
+  // 使用文件上传接口
+  const file = fileList.value[0]
+  createBannerWithFile(getShopId(), file).then(res => {
     ElMessage.success('创建成功')
     createDialogVisible.value = false
     getList()
@@ -266,5 +321,16 @@ onMounted(() => {
 }
 .mb8 {
   margin-bottom: 8px;
+}
+
+.file-list {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  border: 1px solid #ebeef5;
 }
 </style>
