@@ -43,7 +43,7 @@ export function updateBanner(data) {
 // 删除Banner
 export function deleteBanner(ids) {
   return request({
-    url: '/mall/banner/delete',
+    url: '/mch/banner/delete',
     method: 'post',
     data: ids
   })
