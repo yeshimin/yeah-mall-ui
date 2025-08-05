@@ -75,10 +75,17 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="editDialogVisible" title="编辑Banner" width="400px" @close="editDialogVisible = false">
-      <el-form :model="editForm" :rules="editFormRules" label-width="90px">
+    <el-dialog v-model="editDialogVisible" title="编辑Banner" width="500px" append-to-body>
+      <el-form ref="editFormRef" :model="editForm" :rules="editFormRules" label-width="80px">
         <el-form-item label="图片" prop="imageUrl">
-          <el-input v-model="editForm.imageUrl" placeholder="请输入图片文件key" />
+          <input type="file" ref="editFileInputRef" @change="handleEditFileSelect" accept="image/*" />
+          <div class="el-upload__tip">
+            只能上传jpg/png文件，且不超过5MB
+          </div>
+          <div v-if="editFileList.length > 0" class="file-list">
+            <span>{{ editFileList[0].name }}</span>
+            <el-button type="danger" link @click="handleEditFileRemove">删除</el-button>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -91,7 +98,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { createBanner, getBannerDetail, updateBanner, deleteBanner, queryBannerList, createBannerWithFile } from '@/api/mall/banner'
+import { createBanner, getBannerDetail, updateBanner, deleteBanner, queryBannerList, createBannerWithFile, updateBannerWithFile } from '@/api/mall/banner'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -123,8 +130,12 @@ const fileList = ref([])
 const editDialogVisible = ref(false)
 const editForm = ref({ id: '', imageUrl: '' })
 const editFormRules = {
-  imageUrl: [ { required: true, message: '请输入图片文件key', trigger: 'blur' } ]
+  imageUrl: [ { required: false, message: '请上传图片', trigger: 'blur' } ]
 }
+
+// 编辑文件上传相关
+const editFileInputRef = ref()
+const editFileList = ref([])
 
 const filteredTableData = computed(() => tableData.value)
 
@@ -200,6 +211,45 @@ function handleFileRemove() {
   }
 }
 
+// 编辑文件上传处理函数
+function handleEditFileSelect(event) {
+  const file = event.target.files[0]
+  if (!file) return
+  
+  // 验证文件类型和大小
+  const isImage = file.type.startsWith('image/')
+  // 支持的图片格式扩展名
+  const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']
+  const fileExtension = file.name.split('.').pop().toLowerCase()
+  const isAllowedExtension = allowedExtensions.includes(fileExtension)
+  const isLt5M = file.size / 1024 / 1024 < 5
+  
+  if (!isImage && !isAllowedExtension) {
+    ElMessage.error('只能上传图片文件(JPG, JPEG, PNG, GIF, BMP, WebP, SVG)!')
+    return false
+  }
+  
+  if (!isLt5M) {
+    ElMessage.error('上传图片大小不能超过 5MB!')
+    return false
+  }
+  
+  // 保存文件到列表
+  editFileList.value = [file]
+  
+  // 同时更新表单字段以通过验证
+  editForm.value.imageUrl = file.name
+}
+
+function handleEditFileRemove() {
+  editFileList.value = []
+  editForm.value.imageUrl = ''
+  // 清空文件输入框
+  if (editFileInputRef.value) {
+    editFileInputRef.value.value = ''
+  }
+}
+
 function handleAdd() {
   createForm.value = { imageUrl: '' }
   fileList.value = []
@@ -236,15 +286,30 @@ function handleUpdate(row) {
   }
   getBannerDetail(target.id).then(res => {
     editForm.value = { ...res.data }
+    // 清空编辑文件列表
+    editFileList.value = []
+    // 清空文件输入框
+    if (editFileInputRef.value) {
+      editFileInputRef.value.value = ''
+    }
     editDialogVisible.value = true
   })
 }
 function handleEditConfirm() {
-  if (!editForm.value.imageUrl) {
-    ElMessage.warning('请填写图片文件key')
+  if (editFileList.value.length === 0) {
+    ElMessage.warning('请上传图片')
     return
   }
-  updateBanner(editForm.value).then(() => {
+  
+  // 检查editForm.value.id是否存在
+  if (!editForm.value.id) {
+    ElMessage.error('Banner ID不存在')
+    return
+  }
+  
+  // 使用文件上传接口
+  const file = editFileList.value[0]
+  updateBannerWithFile(editForm.value.id.toString(), getShopId(), file).then(() => {
     ElMessage.success('修改成功')
     editDialogVisible.value = false
     getList()

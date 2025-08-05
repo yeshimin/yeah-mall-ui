@@ -60,6 +60,44 @@ export const constantRoutes = [
     ]
   },
   {
+    path: '/mall/banner',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mall/banner/index.vue'),
+        name: 'BannerManage',
+        meta: { title: 'Banner管理', icon: 'banner' }
+      }
+    ]
+  },
+  {
+    path: '/mall/banner/test',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mall/banner/test.vue'),
+        name: 'BannerTest',
+        meta: { title: 'Banner测试' }
+      }
+    ]
+  },
+  {
+    path: '/mall/banner/test-update',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mall/banner/test-update.vue'),
+        name: 'BannerTestUpdate',
+        meta: { title: 'Banner更新测试' }
+      }
+    ]
+  },
+  {
     path: "/:pathMatch(.*)*",
     component: () => import('@/views/error/404'),
     hidden: true

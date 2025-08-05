@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试Banner更新接口</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h2>测试Banner更新接口</h2>
+    <form id="updateForm">
+        <div>
+            <label for="id">Banner ID:</label>
+            <input type="text" id="id" name="id" value="33" required>
+        </div>
+        <div>
+            <label for="shopId">Shop ID:</label>
+            <input type="text" id="shopId" name="shopId" value="1" required>
+        </div>
+        <div>
+            <label for="file">选择文件:</label>
+            <input type="file" id="file" name="file" required>
+        </div>
+        <div>
+            <label for="token">Authorization Token:</label>
+            <input type="text" id="token" name="token" size="50" value="Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiIxIiwiaWF0IjoxNzU0MzgwMzQ2LCJzdWIiOiJtY2giLCJ0ZXJtIjoiYXBpIiwiaWF0TXMiOjE3NTQzODAzNDY0NTMsImV4cE1zIjoxNzU0MzgzOTQ2NDUzfQ.Ll7F2s52ZXIuV9GwessI6G4A38-1PED-iqgqKiryDlw" required>
+        </div>
+        <div>
+            <button type="submit">更新Banner</button>
+        </div>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('updateForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('id', document.getElementById('id').value);
+            formData.append('shopId', document.getElementById('shopId').value);
+            formData.append('file', document.getElementById('file').files[0]);
+            
+            const token = document.getElementById('token').value;
+            
+            fetch('http://localhost:8080/mch/banner/update', {
+                method: 'POST',
+                headers: {
+                    'Authorization': token
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').innerHTML = '<p>成功: ' + JSON.stringify(data) + '</p>';
+            })
+            .catch(error => {
+                document.getElementById('result').innerHTML = '<p>错误: ' + error.message + '</p>';
+            });
+        });
+    </script>
+</body>
+</html>
