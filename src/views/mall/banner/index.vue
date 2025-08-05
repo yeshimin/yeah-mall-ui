@@ -1,13 +1,12 @@
 <template>
   <div class="app-container">
-    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" @submit.prevent>
-      <el-form-item label="Banner标题" prop="title">
+    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch" label-width="68px">
+      <el-form-item label="图片链接" prop="imageUrl">
         <el-input
-          v-model="queryParams.title"
-          placeholder="请输入Banner标题"
+          v-model="queryParams.imageUrl"
+          placeholder="请输入图片链接"
           clearable
-          style="width: 200px"
-          @keyup.enter="handleQuery"
+          style="width: 240px"
         />
       </el-form-item>
       <el-form-item>
@@ -32,21 +31,13 @@
     <el-table v-loading="loading" :data="filteredTableData" @selection-change="handleSelectionChange" row-key="id">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column prop="id" label="ID" align="center" />
-      <el-table-column prop="title" label="Banner标题" align="center" />
-      <el-table-column prop="image" label="图片" align="center">
+      <el-table-column prop="imageUrl" label="图片" align="center">
         <template #default="scope">
-          <img :src="scope.row.image" alt="banner" style="height:40px;" />
-        </template>
-      </el-table-column>
-      <el-table-column prop="link" label="跳转链接" align="center" />
-      <el-table-column prop="status" label="状态" align="center">
-        <template #default="scope">
-          <el-tag :type="scope.row.status === '1' ? 'success' : 'info'">
-            {{ scope.row.status === '1' ? '启用' : '禁用' }}
-          </el-tag>
+          <ImagePreview :src="getFullImageUrl(scope.row.imageUrl)" :width="40" :height="40" />
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" align="center" />
+      <el-table-column prop="createBy" label="创建人" align="center" />
       <el-table-column label="操作" width="180" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
           <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
@@ -65,20 +56,8 @@
 
     <el-dialog v-model="createDialogVisible" title="创建Banner" width="400px" @close="createDialogVisible = false">
       <el-form :model="createForm" :rules="createFormRules" label-width="90px">
-        <el-form-item label="Banner标题" prop="title">
-          <el-input v-model="createForm.title" placeholder="请输入Banner标题" />
-        </el-form-item>
-        <el-form-item label="图片" prop="image">
-          <el-input v-model="createForm.image" placeholder="请输入图片链接" />
-        </el-form-item>
-        <el-form-item label="跳转链接" prop="link">
-          <el-input v-model="createForm.link" placeholder="请输入跳转链接" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="createForm.status" placeholder="请选择状态">
-            <el-option label="启用" value="1" />
-            <el-option label="禁用" value="0" />
-          </el-select>
+        <el-form-item label="图片" prop="imageUrl">
+          <el-input v-model="createForm.imageUrl" placeholder="请输入图片文件key" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -89,20 +68,8 @@
 
     <el-dialog v-model="editDialogVisible" title="编辑Banner" width="400px" @close="editDialogVisible = false">
       <el-form :model="editForm" :rules="editFormRules" label-width="90px">
-        <el-form-item label="Banner标题" prop="title">
-          <el-input v-model="editForm.title" placeholder="请输入Banner标题" />
-        </el-form-item>
-        <el-form-item label="图片" prop="image">
-          <el-input v-model="editForm.image" placeholder="请输入图片链接" />
-        </el-form-item>
-        <el-form-item label="跳转链接" prop="link">
-          <el-input v-model="editForm.link" placeholder="请输入跳转链接" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="editForm.status" placeholder="请选择状态">
-            <el-option label="启用" value="1" />
-            <el-option label="禁用" value="0" />
-          </el-select>
+        <el-form-item label="图片" prop="imageUrl">
+          <el-input v-model="editForm.imageUrl" placeholder="请输入图片文件key" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -115,7 +82,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { listBanner, createBanner, getBannerDetail, updateBanner, deleteBanner } from '@/api/mall/banner'
+import { createBanner, getBannerDetail, updateBanner, deleteBanner, queryBannerList } from '@/api/mall/banner'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -129,37 +96,50 @@ const single = ref(true)
 const multiple = ref(true)
 const total = ref(0)
 const queryParams = ref({
-  title: '',
+  imageUrl: '',
   current: 1,
   size: 10
 })
 
 const createDialogVisible = ref(false)
-const createForm = ref({ title: '', image: '', link: '', status: '1' })
+const createForm = ref({ imageUrl: '' })
 const createFormRules = {
-  title: [ { required: true, message: '请输入Banner标题', trigger: 'blur' } ],
-  image: [ { required: true, message: '请输入图片链接', trigger: 'blur' } ],
-  link: [ { required: true, message: '请输入跳转链接', trigger: 'blur' } ],
-  status: [ { required: true, message: '请选择状态', trigger: 'change' } ]
+  imageUrl: [ { required: true, message: '请输入图片文件key', trigger: 'blur' } ]
 }
 
 const editDialogVisible = ref(false)
-const editForm = ref({ id: '', title: '', image: '', link: '', status: '1' })
+const editForm = ref({ id: '', imageUrl: '' })
 const editFormRules = {
-  title: [ { required: true, message: '请输入Banner标题', trigger: 'blur' } ],
-  image: [ { required: true, message: '请输入图片链接', trigger: 'blur' } ],
-  link: [ { required: true, message: '请输入跳转链接', trigger: 'blur' } ],
-  status: [ { required: true, message: '请选择状态', trigger: 'change' } ]
+  imageUrl: [ { required: true, message: '请输入图片文件key', trigger: 'blur' } ]
 }
 
 const filteredTableData = computed(() => tableData.value)
+
+// 构造完整的图片URL
+function getFullImageUrl(fileKey) {
+  if (!fileKey) return ''
+  
+  // 根据当前激活的环境获取相应的基础地址配置
+  const env = import.meta.env.VITE_APP_ENV;
+  const baseApi = import.meta.env.VITE_APP_BASE_API || '';
+  
+  // 根据不同环境构造图片URL
+  if (env === 'development') {
+    // 开发环境从环境变量中获取目标地址
+    const proxyTarget = import.meta.env.VITE_APP_DEV_BACKEND_URL || 'http://localhost:8080';
+    return `${proxyTarget}/public/storage/preview?fileKey=${fileKey}`;
+  } else {
+    // 其他环境(生产、测试等)使用配置的基础API路径
+    return `${baseApi}/public/storage/preview?fileKey=${fileKey}`;
+  }
+}
 
 function handleQuery() {
   queryParams.value.current = 1
   getList()
 }
 function resetQuery() {
-  queryParams.value.title = ''
+  queryParams.value.imageUrl = ''
   handleQuery()
 }
 function handleSelectionChange(selection) {
@@ -169,15 +149,20 @@ function handleSelectionChange(selection) {
   multiple.value = !selection.length
 }
 function handleAdd() {
-  createForm.value = { title: '', image: '', link: '', status: '1' }
+  createForm.value = { imageUrl: '' }
   createDialogVisible.value = true
 }
 function handleCreateConfirm() {
-  if (!createForm.value.title || !createForm.value.image || !createForm.value.link) {
-    ElMessage.warning('请填写完整信息')
+  if (!createForm.value.imageUrl) {
+    ElMessage.warning('请填写图片文件key')
     return
   }
-  createBanner(createForm.value).then(res => {
+  // 添加shopId到创建参数中
+  const createParams = {
+    ...createForm.value,
+    shopId: getShopId()
+  }
+  createBanner(createParams).then(res => {
     ElMessage.success('创建成功')
     createDialogVisible.value = false
     getList()
@@ -200,8 +185,8 @@ function handleUpdate(row) {
   })
 }
 function handleEditConfirm() {
-  if (!editForm.value.title || !editForm.value.image || !editForm.value.link) {
-    ElMessage.warning('请填写完整信息')
+  if (!editForm.value.imageUrl) {
+    ElMessage.warning('请填写图片文件key')
     return
   }
   updateBanner(editForm.value).then(() => {
@@ -239,17 +224,25 @@ function handleDelete(row) {
 function getList() {
   loading.value = true
   let conditions = []
-  if (queryParams.value.title) {
-    conditions.push(`title:like:${queryParams.value.title}`)
+  // 使用imageUrl字段进行搜索
+  if (queryParams.value.imageUrl) {
+    conditions.push(`imageUrl:like:${queryParams.value.imageUrl}`)
   }
+  // 添加按ID降序排序
+  conditions.push('id:sort:desc')
+  
   const params = {
     size: queryParams.value.size,
-    current: queryParams.value.current
+    current: queryParams.value.current,
+    shopId: getShopId() // 添加shopId参数
   }
+  
   if (conditions.length) {
-    params['conditions_'] = conditions.join(',')
+    params['conditions_'] = conditions.join(';') // 使用分号分隔
   }
-  listBanner(params).then(res => {
+  
+  // 使用新的接口方法
+  queryBannerList(params).then(res => {
     tableData.value = res.data?.records || []
     total.value = res.data?.total || 0
     loading.value = false
@@ -257,6 +250,11 @@ function getList() {
     loading.value = false
   })
 }
+// 获取当前商户ID
+function getShopId() {
+  return localStorage.getItem('shopId') || ''
+}
+
 onMounted(() => {
   getList()
 })

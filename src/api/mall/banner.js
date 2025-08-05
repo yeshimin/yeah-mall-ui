@@ -43,3 +43,12 @@ export function getBannerDetail(id) {
     method: 'get'
   })
 }
+
+// 查询Banner列表（新接口）
+export function queryBannerList(params) {
+  return request({
+    url: '/mch/banner/crud/query',
+    method: 'get',
+    params
+  })
+}
