@@ -50,6 +50,7 @@ export const constantRoutes = [
   {
     path: '/mall/sku',
     component: Layout,
+    hidden: true,
     children: [
       {
         path: '',
