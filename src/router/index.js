@@ -61,18 +61,6 @@ export const constantRoutes = [
     ]
   },
   {
-    path: '/mall/banner',
-    component: Layout,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/mall/banner/index.vue'),
-        name: 'BannerManage',
-        meta: { title: 'Banner管理', icon: 'banner' }
-      }
-    ]
-  },
-  {
     path: '/mall/banner/test',
     component: Layout,
     hidden: true,
