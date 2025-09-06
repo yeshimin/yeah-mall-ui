@@ -33,16 +33,22 @@
     <el-table v-loading="loading" :data="filteredTableData" @selection-change="handleSelectionChange" row-key="id">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column prop="id" label="ID" align="center" />
+      <el-table-column prop="mainImage" label="主图" align="center">
+        <template #default="scope">
+          <ImagePreview :src="getFullImageUrl(scope.row.mainImage)" :width="40" :height="40" />
+        </template>
+      </el-table-column>
       <el-table-column prop="name" label="商品名称" align="center" />
       <el-table-column prop="categoryName" label="分类名称" align="center" />
       <el-table-column prop="createBy" label="创建人" align="center" />
       <el-table-column prop="createTime" label="创建时间" align="center" />
       <el-table-column prop="updateBy" label="更新人" align="center" />
       <el-table-column prop="updateTime" label="更新时间" align="center" />
-      <el-table-column label="操作" width="260" align="center" class-name="small-padding fixed-width">
+      <el-table-column label="操作" width="320" align="center" class-name="small-padding fixed-width">
   <template #default="scope">
     <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)">修改</el-button>
     <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
+    <el-button link type="primary" icon="Picture" @click="handleImageManage(scope.row)">图片管理</el-button>
     <el-button link type="primary" icon="PriceTag" @click="handleSkuManage(scope.row.id)">SKU管理</el-button>
   </template>
 </el-table-column>
@@ -125,6 +131,50 @@
         <el-button type="primary" @click="handleEditConfirm">确 定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 图片管理弹出框 -->
+    <el-dialog v-model="imageManageDialogVisible" :title="'图片管理 - ' + currentProduct.name" width="600px" @close="imageManageDialogVisible = false">
+      <el-tabs v-model="activeImageTab">
+        <!-- 主图tab -->
+        <el-tab-pane label="主图" name="main">
+          <el-upload
+            class="main-image-uploader"
+            action="/api/upload"
+            :show-file-list="false"
+            :on-success="handleMainImageSuccess"
+            :before-upload="beforeMainImageUpload">
+            <img v-if="mainImageUrl" :src="mainImageUrl" class="main-image">
+            <i v-else class="el-icon-plus main-image-uploader-icon"></i>
+          </el-upload>
+        </el-tab-pane>
+        
+        <!-- 滚动图tab -->
+        <el-tab-pane label="滚动图" name="carousel">
+          <!-- 滚动图列表 -->
+          <div class="carousel-images">
+            <div v-for="(image, index) in carouselImages" :key="index" class="carousel-image-item">
+              <img :src="image.url" class="carousel-image">
+              <el-button type="danger" icon="Delete" circle @click="handleDeleteCarouselImage(index)"></el-button>
+            </div>
+          </div>
+          
+          <!-- 滚动图上传 -->
+          <el-upload
+            class="carousel-image-uploader"
+            action="/api/upload"
+            :show-file-list="false"
+            :on-success="handleCarouselImageSuccess"
+            :before-upload="beforeCarouselImageUpload">
+            <el-button type="primary">上传滚动图</el-button>
+          </el-upload>
+        </el-tab-pane>
+      </el-tabs>
+      
+      <template #footer>
+        <el-button @click="imageManageDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="handleImageManageConfirm">确 定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -135,6 +185,7 @@ import { getCategoryTree } from '@/api/mall/category'
 import { listSpecDef, listSpecOptDef } from '@/api/mall/specDef'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
+import ImagePreview from '@/components/ImagePreview/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Close, CircleCheck, PriceTag } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
@@ -170,6 +221,13 @@ const editFormRules = {
   name: [ { required: true, message: '请输入商品名称', trigger: 'blur' } ],
   categoryId: [ { required: true, message: '请选择所属分类', trigger: 'blur' } ]
 }
+
+// 图片管理相关
+const imageManageDialogVisible = ref(false)
+const activeImageTab = ref('main')
+const currentProduct = ref({})
+const mainImageUrl = ref('')
+const carouselImages = ref([])
 
 const editActiveSpecId = ref(null)
 const editSelectedSpecs = ref([])
@@ -370,6 +428,16 @@ function handleSkuManage(spuId) {
   router.push({ path: '/mall/sku', query: { spuId } })
 }
 
+// 图片管理处理函数
+function handleImageManage(row) {
+  currentProduct.value = row
+  // 这里应该从API获取当前商品的图片信息
+  // 模拟数据
+  mainImageUrl.value = ''
+  carouselImages.value = []
+  imageManageDialogVisible.value = true
+}
+
 function handleDelete(row) {
   let targets = []
   if (row && row.id) {
@@ -446,6 +514,81 @@ function toggleEditOpt(specId, optId) {
   }
 }
 
+// 构造完整的图片URL
+function getFullImageUrl(fileKey) {
+  if (!fileKey) return ''
+  
+  // 根据当前激活的环境获取相应的基础地址配置
+  const env = import.meta.env.VITE_APP_ENV;
+  const baseApi = import.meta.env.VITE_APP_BASE_API || '';
+  
+  // 根据不同环境构造图片URL
+  if (env === 'development') {
+    // 开发环境从环境变量中获取目标地址
+    const proxyTarget = import.meta.env.VITE_APP_DEV_BACKEND_URL || 'http://localhost:8080';
+    return `${proxyTarget}/public/storage/preview?fileKey=${fileKey}`;
+  } else {
+    // 其他环境(生产、测试等)使用配置的基础API路径
+    return `${baseApi}/public/storage/preview?fileKey=${fileKey}`;
+  }
+}
+
+// 图片管理相关处理函数
+function handleMainImageSuccess(response, file, fileList) {
+  // 处理主图上传成功
+  mainImageUrl.value = response.data.url // 假设API返回的图片URL在response.data.url
+}
+
+function beforeMainImageUpload(file) {
+  // 主图上传前的检查
+  const isJPG = file.type === 'image/jpeg' || file.type === 'image/png'
+  const isLt2M = file.size / 1024 / 1024 < 2
+  
+  if (!isJPG) {
+    ElMessage.error('上传头像图片只能是 JPG/PNG 格式!')
+  }
+  if (!isLt2M) {
+    ElMessage.error('上传头像图片大小不能超过 2MB!')
+  }
+  
+  return isJPG && isLt2M
+}
+
+function handleCarouselImageSuccess(response, file, fileList) {
+  // 处理滚动图上传成功
+  carouselImages.value.push({
+    url: response.data.url, // 假设API返回的图片URL在response.data.url
+    id: Date.now() // 临时ID，实际应该使用API返回的ID
+  })
+}
+
+function beforeCarouselImageUpload(file) {
+  // 滚动图上传前的检查
+  const isJPG = file.type === 'image/jpeg' || file.type === 'image/png'
+  const isLt2M = file.size / 1024 / 1024 < 2
+  
+  if (!isJPG) {
+    ElMessage.error('上传图片只能是 JPG/PNG 格式!')
+  }
+  if (!isLt2M) {
+    ElMessage.error('上传图片大小不能超过 2MB!')
+  }
+  
+  return isJPG && isLt2M
+}
+
+function handleDeleteCarouselImage(index) {
+  // 删除滚动图
+  carouselImages.value.splice(index, 1)
+}
+
+function handleImageManageConfirm() {
+  // 确认图片管理更改
+  // 这里应该调用API保存图片信息
+  ElMessage.success('图片信息已保存')
+  imageManageDialogVisible.value = false
+}
+
 </script>
 
 <style scoped>
@@ -494,5 +637,69 @@ function toggleEditOpt(specId, optId) {
   margin-bottom: 12px;
   font-weight: 500;
   color: #333;
+}
+
+/* 图片管理样式 */
+.main-image-uploader {
+  border: 1px dashed #d9d9d9;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: var(--el-transition-duration-fast);
+  width: 200px;
+  height: 200px;
+}
+
+.main-image-uploader:hover {
+  border-color: var(--el-color-primary);
+}
+
+.main-image-uploader-icon {
+  font-size: 28px;
+  color: #8c939d;
+  width: 200px;
+  height: 200px;
+  text-align: center;
+  line-height: 200px;
+}
+
+.main-image {
+  width: 200px;
+  height: 200px;
+  display: block;
+}
+
+.carousel-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.carousel-image-item {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.carousel-image {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.carousel-image-item .el-button {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+}
+
+.carousel-image-uploader {
+  width: 100%;
 }
 </style>
