@@ -25,10 +25,11 @@ export function setCarouselImages(data) {
 }
 
 // 删除图片
-export function deleteSpuImage(id) {
+export function deleteSpuImage(data) {
   return request({
-    url: `/mch/productSpuImage/delete/${id}`,
-    method: 'delete'
+    url: '/mch/productSpuImage/delete',
+    method: 'post',
+    data: data
   })
 }
 

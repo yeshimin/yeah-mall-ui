@@ -153,7 +153,7 @@
           <!-- 滚动图列表 -->
           <div class="carousel-images" style="margin-bottom: 20px;">
             <div v-for="(image, index) in carouselImages" :key="index" class="carousel-image-item">
-              <img :src="image.url" class="carousel-image">
+              <ImagePreview :src="image.url" :width="100" :height="100" />
               <el-button type="danger" icon="Delete" circle @click="handleDeleteCarouselImage(index)"></el-button>
             </div>
           </div>
@@ -180,7 +180,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { listSpu, createSpu, updateSpu, deleteSpu, getSpuDetail, setMainImage } from '@/api/mall/spu'
-import { setCarouselImages, listSpuImages } from '@/api/mall/spuImage'
+import { setCarouselImages, listSpuImages, deleteSpuImage } from '@/api/mall/spuImage'
 import { getCategoryTree } from '@/api/mall/category'
 import { listSpecDef, listSpecOptDef } from '@/api/mall/specDef'
 import RightToolbar from '@/components/RightToolbar/index.vue'
@@ -672,7 +672,42 @@ function beforeCarouselImageUpload(file) {
 
 function handleDeleteCarouselImage(index) {
   // 删除滚动图
-  carouselImages.value.splice(index, 1)
+  const imageId = carouselImages.value[index].id;
+  
+  ElMessageBox.confirm('确定要删除这张图片吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    // 将imageId作为数组传递给deleteSpuImage
+    deleteSpuImage([imageId]).then(() => {
+      ElMessage.success('删除成功');
+      // 从本地数组中移除
+      carouselImages.value.splice(index, 1);
+      
+      // 刷新滚动图列表
+      const imageQueryParams = {
+        shopId: getShopId(),
+        'conditions_': 'id:sort:asc',
+        current: imageQueryParamsRef.value.current,
+        size: imageQueryParamsRef.value.size
+      };
+      
+      listSpuImages(imageQueryParams).then(res => {
+        carouselImages.value = res.data.records.map(item => ({
+          url: getFullImageUrl(item.imageUrl),
+          id: item.id
+        }));
+        imageTotal.value = res.data.total;
+      }).catch(error => {
+        console.error('刷新滚动图列表失败:', error);
+      });
+    }).catch(() => {
+      ElMessage.error('删除失败');
+    });
+  }).catch(() => {
+    // 用户取消删除
+  });
 }
 
 function handleImageManageClose() {
