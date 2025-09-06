@@ -133,16 +133,16 @@
     </el-dialog>
 
     <!-- 图片管理弹出框 -->
-    <el-dialog v-model="imageManageDialogVisible" :title="'图片管理 - ' + currentProduct.name" width="600px" @close="imageManageDialogVisible = false">
+    <el-dialog v-model="imageManageDialogVisible" :title="'图片管理 - ' + currentProduct.name" width="600px" @close="handleImageManageClose">
       <el-tabs v-model="activeImageTab">
         <!-- 主图tab -->
         <el-tab-pane label="主图" name="main">
           <el-upload
             class="main-image-uploader"
-            action="/api/upload"
             :show-file-list="false"
             :on-success="handleMainImageSuccess"
-            :before-upload="beforeMainImageUpload">
+            :before-upload="beforeMainImageUpload"
+            :http-request="handleMainImageUpload">
             <img v-if="mainImageUrl" :src="mainImageUrl" class="main-image">
             <i v-else class="el-icon-plus main-image-uploader-icon"></i>
           </el-upload>
@@ -161,26 +161,21 @@
           <!-- 滚动图上传 -->
           <el-upload
             class="carousel-image-uploader"
-            action="/api/upload"
             :show-file-list="false"
             :on-success="handleCarouselImageSuccess"
-            :before-upload="beforeCarouselImageUpload">
+            :before-upload="beforeCarouselImageUpload"
+            :http-request="handleCarouselImageUpload">
             <el-button type="primary">上传滚动图</el-button>
           </el-upload>
         </el-tab-pane>
       </el-tabs>
-      
-      <template #footer>
-        <el-button @click="imageManageDialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="handleImageManageConfirm">确 定</el-button>
-      </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { listSpu, createSpu, updateSpu, deleteSpu, getSpuDetail } from '@/api/mall/spu'
+import { listSpu, createSpu, updateSpu, deleteSpu, getSpuDetail, setMainImage } from '@/api/mall/spu'
 import { getCategoryTree } from '@/api/mall/category'
 import { listSpecDef, listSpecOptDef } from '@/api/mall/specDef'
 import RightToolbar from '@/components/RightToolbar/index.vue'
@@ -431,9 +426,8 @@ function handleSkuManage(spuId) {
 // 图片管理处理函数
 function handleImageManage(row) {
   currentProduct.value = row
-  // 这里应该从API获取当前商品的图片信息
-  // 模拟数据
-  mainImageUrl.value = ''
+  // 使用列表数据中的mainImage字段
+  mainImageUrl.value = row.mainImage ? getFullImageUrl(row.mainImage) : ''
   carouselImages.value = []
   imageManageDialogVisible.value = true
 }
@@ -533,10 +527,63 @@ function getFullImageUrl(fileKey) {
   }
 }
 
+// 构造完整的API URL
+function getFullApiUrl(apiPath) {
+  // 根据当前激活的环境获取相应的基础地址配置
+  const env = import.meta.env.VITE_APP_ENV;
+  
+  // 根据不同环境构造API URL
+  if (env === 'development') {
+    // 开发环境从环境变量中获取目标地址
+    const proxyTarget = import.meta.env.VITE_APP_DEV_BACKEND_URL || 'http://localhost:8080';
+    return `${proxyTarget}${apiPath}`;
+  } else {
+    // 其他环境(生产、测试等)使用配置的基础API路径
+    const baseApi = import.meta.env.VITE_APP_BASE_API || '';
+    return `${baseApi}${apiPath}`;
+  }
+}
+
 // 图片管理相关处理函数
+function handleMainImageUpload(option) {
+  // 自定义主图上传处理
+  const formData = new FormData();
+  formData.append('file', option.file);
+  formData.append('shopId', getShopId());
+  formData.append('spuId', currentProduct.value.id);
+  
+  setMainImage(formData).then(response => {
+    // 调用Element Plus上传组件的成功回调
+    option.onSuccess(response);
+  }).catch(error => {
+    // 调用Element Plus上传组件的失败回调
+    option.onError(error);
+  });
+}
+
+function handleCarouselImageUpload(option) {
+  // 自定义滚动图上传处理
+  const formData = new FormData();
+  formData.append('file', option.file);
+  formData.append('shopId', getShopId());
+  formData.append('spuId', currentProduct.value.id);
+  
+  setCarouselImages(formData).then(response => {
+    // 调用Element Plus上传组件的成功回调
+    option.onSuccess(response);
+  }).catch(error => {
+    // 调用Element Plus上传组件的失败回调
+    option.onError(error);
+  });
+}
+
 function handleMainImageSuccess(response, file, fileList) {
   // 处理主图上传成功
-  mainImageUrl.value = response.data.url // 假设API返回的图片URL在response.data.url
+  // 更新主图URL为新上传的图片
+  mainImageUrl.value = getFullImageUrl(response.data.mainImage)
+  
+  // 不再同步到列表，只在关闭弹窗后刷新列表
+  ElMessage.success('主图设置成功')
 }
 
 function beforeMainImageUpload(file) {
@@ -582,11 +629,15 @@ function handleDeleteCarouselImage(index) {
   carouselImages.value.splice(index, 1)
 }
 
-function handleImageManageConfirm() {
-  // 确认图片管理更改
-  // 这里应该调用API保存图片信息
-  ElMessage.success('图片信息已保存')
-  imageManageDialogVisible.value = false
+function handleImageManageClose() {
+  // 图片管理弹窗关闭时的处理
+  // 重新刷新列表
+  getList()
+  
+  // 重置相关状态
+  mainImageUrl.value = ''
+  carouselImages.value = []
+  currentProduct.value = {}
 }
 
 </script>

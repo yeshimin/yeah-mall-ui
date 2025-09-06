@@ -48,3 +48,21 @@ export function querySpec(params) {
     params
   })
 }
+
+// 设置主图
+export function setMainImage(data) {
+  return request({
+    url: '/mch/productSpu/setMainImage',
+    method: 'post',
+    data
+  })
+}
+
+// 设置滚动图
+export function setCarouselImages(data) {
+  return request({
+    url: '/mch/productSpu/setCarouselImages',
+    method: 'post',
+    data
+  })
+}
