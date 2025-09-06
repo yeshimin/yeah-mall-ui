@@ -133,7 +133,7 @@
     </el-dialog>
 
     <!-- 图片管理弹出框 -->
-    <el-dialog v-model="imageManageDialogVisible" :title="'图片管理 - ' + currentProduct.name" width="600px" @close="handleImageManageClose">
+    <el-dialog v-model="imageManageDialogVisible" :title="'图片管理 - ' + currentProduct.name" width="600px" @close="handleImageManageClose" :close-on-press-escape="false">
       <el-tabs v-model="activeImageTab">
         <!-- 主图tab -->
         <el-tab-pane label="主图" name="main">
