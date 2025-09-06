@@ -151,12 +151,16 @@
         <!-- 滚动图tab -->
         <el-tab-pane label="滚动图" name="carousel">
           <!-- 滚动图列表 -->
-          <div class="carousel-images">
+          <div class="carousel-images" style="margin-bottom: 20px;">
             <div v-for="(image, index) in carouselImages" :key="index" class="carousel-image-item">
               <img :src="image.url" class="carousel-image">
               <el-button type="danger" icon="Delete" circle @click="handleDeleteCarouselImage(index)"></el-button>
             </div>
           </div>
+          
+          <!-- 分页 -->
+          <pagination v-show="imageTotal > 0" :total="imageTotal" v-model:page="imageQueryParamsRef.current" v-model:limit="imageQueryParamsRef.size"
+            @pagination="handleImageManage(currentProduct)" style="margin-bottom: 20px;" />
           
           <!-- 滚动图上传 -->
           <el-upload
@@ -224,6 +228,11 @@ const activeImageTab = ref('main')
 const currentProduct = ref({})
 const mainImageUrl = ref('')
 const carouselImages = ref([])
+const imageTotal = ref(0)
+const imageQueryParamsRef = ref({
+  current: 1,
+  size: 10
+})
 
 const editActiveSpecId = ref(null)
 const editSelectedSpecs = ref([])
@@ -432,15 +441,18 @@ function handleImageManage(row) {
   carouselImages.value = []
   
   // 获取滚动图列表
-  const queryParams = {
+  const imageQueryParams = {
     shopId: getShopId(),
-    'conditions_': 'id:sort:asc'
+    'conditions_': 'id:sort:asc',
+    current: imageQueryParamsRef.value.current,
+    size: imageQueryParamsRef.value.size
   }
-  listSpuImages(queryParams).then(res => {
+  listSpuImages(imageQueryParams).then(res => {
     carouselImages.value = res.data.records.map(item => ({
       url: getFullImageUrl(item.imageUrl),
       id: item.id
     }))
+    imageTotal.value = res.data.total
   }).catch(error => {
     console.error('获取滚动图列表失败:', error)
   })
@@ -626,15 +638,18 @@ function handleCarouselImageSuccess(response, file, fileList) {
   })
   
   // 刷新滚动图列表
-  const queryParams = {
+  const imageQueryParams = {
     shopId: getShopId(),
-    'conditions_': 'id:sort:asc'
+    'conditions_': 'id:sort:asc',
+    current: imageQueryParamsRef.value.current,
+    size: imageQueryParamsRef.value.size
   }
-  listSpuImages(queryParams).then(res => {
+  listSpuImages(imageQueryParams).then(res => {
     carouselImages.value = res.data.records.map(item => ({
       url: getFullImageUrl(item.imageUrl),
       id: item.id
     }))
+    imageTotal.value = res.data.total
   }).catch(error => {
     console.error('刷新滚动图列表失败:', error)
   })
@@ -757,12 +772,14 @@ function handleImageManageClose() {
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 20px;
+  padding-top: 10px;
 }
 
 .carousel-image-item {
   position: relative;
   width: 100px;
   height: 100px;
+  margin-bottom: 10px;
 }
 
 .carousel-image {
