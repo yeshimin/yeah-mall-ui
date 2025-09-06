@@ -137,14 +137,20 @@
       <el-tabs v-model="activeImageTab">
         <!-- 主图tab -->
         <el-tab-pane label="主图" name="main">
+          <!-- 主图展示 -->
+          <div class="main-image-container">
+            <ImagePreview v-if="mainImageUrl" :src="mainImageUrl" :width="200" :height="200" />
+            <i v-else class="el-icon-plus main-image-uploader-icon"></i>
+          </div>
+          
+          <!-- 主图上传 -->
           <el-upload
             class="main-image-uploader"
             :show-file-list="false"
             :on-success="handleMainImageSuccess"
             :before-upload="beforeMainImageUpload"
             :http-request="handleMainImageUpload">
-            <img v-if="mainImageUrl" :src="mainImageUrl" class="main-image">
-            <i v-else class="el-icon-plus main-image-uploader-icon"></i>
+            <el-button type="primary">上传主图</el-button>
           </el-upload>
         </el-tab-pane>
         
@@ -772,6 +778,17 @@ function handleImageManageClose() {
 }
 
 /* 图片管理样式 */
+.main-image-container {
+  width: 200px;
+  height: 200px;
+  margin-bottom: 20px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .main-image-uploader {
   border: 1px dashed #d9d9d9;
   border-radius: 6px;
@@ -780,7 +797,7 @@ function handleImageManageClose() {
   overflow: hidden;
   transition: var(--el-transition-duration-fast);
   width: 200px;
-  height: 200px;
+  height: 40px;
 }
 
 .main-image-uploader:hover {
