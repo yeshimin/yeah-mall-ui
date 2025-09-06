@@ -176,6 +176,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { listSpu, createSpu, updateSpu, deleteSpu, getSpuDetail, setMainImage } from '@/api/mall/spu'
+import { setCarouselImages, listSpuImages } from '@/api/mall/spuImage'
 import { getCategoryTree } from '@/api/mall/category'
 import { listSpecDef, listSpecOptDef } from '@/api/mall/specDef'
 import RightToolbar from '@/components/RightToolbar/index.vue'
@@ -429,6 +430,21 @@ function handleImageManage(row) {
   // 使用列表数据中的mainImage字段
   mainImageUrl.value = row.mainImage ? getFullImageUrl(row.mainImage) : ''
   carouselImages.value = []
+  
+  // 获取滚动图列表
+  const queryParams = {
+    shopId: getShopId(),
+    'conditions_': 'id:sort:asc'
+  }
+  listSpuImages(queryParams).then(res => {
+    carouselImages.value = res.data.records.map(item => ({
+      url: getFullImageUrl(item.imageUrl),
+      id: item.id
+    }))
+  }).catch(error => {
+    console.error('获取滚动图列表失败:', error)
+  })
+  
   imageManageDialogVisible.value = true
 }
 
@@ -603,9 +619,24 @@ function beforeMainImageUpload(file) {
 
 function handleCarouselImageSuccess(response, file, fileList) {
   // 处理滚动图上传成功
+  // 更新本地预览
   carouselImages.value.push({
     url: response.data.url, // 假设API返回的图片URL在response.data.url
     id: Date.now() // 临时ID，实际应该使用API返回的ID
+  })
+  
+  // 刷新滚动图列表
+  const queryParams = {
+    shopId: getShopId(),
+    'conditions_': 'id:sort:asc'
+  }
+  listSpuImages(queryParams).then(res => {
+    carouselImages.value = res.data.records.map(item => ({
+      url: getFullImageUrl(item.imageUrl),
+      id: item.id
+    }))
+  }).catch(error => {
+    console.error('刷新滚动图列表失败:', error)
   })
 }
 
