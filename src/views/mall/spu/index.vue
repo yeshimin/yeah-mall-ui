@@ -449,6 +449,7 @@ function handleImageManage(row) {
   // 获取滚动图列表
   const imageQueryParams = {
     shopId: getShopId(),
+    spuId: currentProduct.value.id,
     'conditions_': 'id:sort:asc',
     current: imageQueryParamsRef.value.current,
     size: imageQueryParamsRef.value.size
@@ -646,6 +647,7 @@ function handleCarouselImageSuccess(response, file, fileList) {
   // 刷新滚动图列表
   const imageQueryParams = {
     shopId: getShopId(),
+    spuId: currentProduct.value.id,
     'conditions_': 'id:sort:asc',
     current: imageQueryParamsRef.value.current,
     size: imageQueryParamsRef.value.size
@@ -694,6 +696,7 @@ function handleDeleteCarouselImage(index) {
       // 刷新滚动图列表
       const imageQueryParams = {
         shopId: getShopId(),
+        spuId: currentProduct.value.id,
         'conditions_': 'id:sort:asc',
         current: imageQueryParamsRef.value.current,
         size: imageQueryParamsRef.value.size
