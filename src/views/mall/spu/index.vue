@@ -67,6 +67,9 @@
         <el-form-item label="商品名称" prop="name">
           <el-input v-model="createForm.name" placeholder="请输入商品名称" />
         </el-form-item>
+        <el-form-item label="详细描述" prop="detailDesc">
+          <Editor ref="createEditorRef" v-model="createForm.detailDesc" :defaultContent="createForm.detailDesc" />
+        </el-form-item>
         <el-form-item label="规格">
           <div class="spec-container">
             <div style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
@@ -98,6 +101,9 @@
       <el-form :model="editForm" :rules="editFormRules" label-width="90px">
         <el-form-item label="商品名称" prop="name">
           <el-input v-model="editForm.name" placeholder="请输入商品名称" />
+        </el-form-item>
+        <el-form-item label="详细描述" prop="detailDesc">
+          <Editor ref="editEditorRef" v-model="editForm.detailDesc" :defaultContent="editForm.detailDesc" />
         </el-form-item>
         <el-form-item label="商品分类" prop="categoryId">
           <el-tree-select v-model="editForm.categoryId" :data="categoryTree"
@@ -195,6 +201,8 @@ import ImagePreview from '@/components/ImagePreview/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Close, CircleCheck, PriceTag } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
+import { Editor } from '@wangeditor/editor-for-vue'
+import '@wangeditor/editor/dist/css/style.css'
 
 const tableData = ref([])
 const loading = ref(false)
@@ -215,14 +223,16 @@ const queryParams = ref({
 })
 
 const createDialogVisible = ref(false)
-const createForm = ref({ name: '', categoryId: '', specs: [] })
+const createForm = ref({ name: '', categoryId: '', specs: [], detailDesc: '' })
+const createEditorRef = ref()
 const createFormRules = {
   name: [ { required: true, message: '请输入商品名称', trigger: 'blur' } ],
   categoryId: [ { required: true, message: '请输入所属分类', trigger: 'blur' } ]
 }
 
 const editDialogVisible = ref(false)
-const editForm = ref({ id: '', name: '', categoryId: '', specs: [] })
+const editForm = ref({ id: '', name: '', categoryId: '', specs: [], detailDesc: '' })
+const editEditorRef = ref()
 const editFormRules = {
   name: [ { required: true, message: '请输入商品名称', trigger: 'blur' } ],
   categoryId: [ { required: true, message: '请选择所属分类', trigger: 'blur' } ]
@@ -342,7 +352,7 @@ function handleSelectionChange(selection) {
   multiple.value = !selection.length
 }
 function handleAdd() {
-  createForm.value = { name: '', categoryId: '', specs: [] }
+  createForm.value = { name: '', categoryId: '', specs: [], detailDesc: '' }
   selectedSpecs.value = []
   fetchSpecs()
   createDialogVisible.value = true
@@ -360,7 +370,8 @@ function handleCreateConfirm() {
     shopId: getShopId(),
     name: createForm.value.name,
     categoryId: createForm.value.categoryId,
-    specs: createForm.value.specs
+    specs: createForm.value.specs,
+    detailDesc: createForm.value.detailDesc
   }).then(res => {
     ElMessage.success('创建成功')
     createDialogVisible.value = false
@@ -395,6 +406,8 @@ function handleUpdate(row) {
     if (data.specs && data.specs.length) {
       editActiveSpecId.value = data.specs[0].specId;
     }
+    // 初始化详细描述
+    editForm.value.detailDesc = data.detailDesc || '';
 
   //   editSelectedSpecs.value = []
     fetchSpecs().then(() => {
@@ -428,7 +441,10 @@ function handleEditConfirm() {
   editForm.value.specs = editSelectedSpecs.value.filter(s => s.optIds.length)
   console.log('editForm.value.specs: ', JSON.stringify(editForm.value.specs))
 
-  updateSpu(editForm.value).then(() => {
+  updateSpu({
+    ...editForm.value,
+    detailDesc: editForm.value.detailDesc
+  }).then(() => {
     ElMessage.success('修改成功')
     editDialogVisible.value = false
     getList()
