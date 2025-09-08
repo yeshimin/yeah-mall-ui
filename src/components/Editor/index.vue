@@ -87,7 +87,8 @@ const options = ref({
       [{ color: [] }, { background: [] }],            // 字体颜色、字体背景颜色
       [{ align: [] }],                                // 对齐方式
       ["clean"],                                      // 清除文本格式
-      ["link", "image", "video"]                      // 链接、图片、视频
+      ["link", "image", "video"],                   // 链接、图片、视频
+      ["custom-fullscreen"]                         // 全屏按钮
     ],
   },
   placeholder: "请输入内容",
@@ -106,11 +107,41 @@ const styles = computed(() => {
 });
 
 const content = ref("");
+const isFullscreen = ref(false);
+
 watch(() => props.modelValue, (v) => {
   if (v !== content.value) {
-    content.value = v == undefined ? "<p></p>" : v;
+    content.value = v === undefined || v === null ? "<p></p>" : v;
   }
 }, { immediate: true });
+
+// 全屏切换函数
+function toggleFullscreen() {
+  isFullscreen.value = !isFullscreen.value;
+  
+  // 获取编辑器容器元素
+  const editorContainer = document.querySelector('.editor');
+  
+  if (isFullscreen.value) {
+    // 进入全屏
+    if (editorContainer.requestFullscreen) {
+      editorContainer.requestFullscreen();
+    } else if (editorContainer.webkitRequestFullscreen) { // Safari
+      editorContainer.webkitRequestFullscreen();
+    } else if (editorContainer.msRequestFullscreen) { // IE11
+      editorContainer.msRequestFullscreen();
+    }
+  } else {
+    // 退出全屏
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) { // Safari
+      document.webkitExitFullscreen();
+    } else if (document.msExitFullscreen) { // IE11
+      document.msExitFullscreen();
+    }
+  }
+}
 
 // 如果设置了上传地址则自定义图片上传事件
 onMounted(() => {
@@ -123,6 +154,11 @@ onMounted(() => {
       } else {
         quill.format("image", false);
       }
+    });
+    
+    // 添加全屏按钮处理函数
+    toolbar.addHandler("custom-fullscreen", () => {
+      toggleFullscreen();
     });
   }
 });
@@ -247,5 +283,10 @@ function handleUploadError() {
 .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="monospace"]::before,
 .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="monospace"]::before {
   content: "等宽字体";
+}
+
+/* 全屏按钮样式 */
+.ql-snow .ql-toolbar .ql-formats button.ql-custom-fullscreen::before {
+  content: "全屏";
 }
 </style>

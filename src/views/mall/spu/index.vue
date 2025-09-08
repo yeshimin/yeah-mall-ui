@@ -57,8 +57,13 @@
     <pagination v-show="total > 0" :total="total" v-model:page="queryParams.current" v-model:limit="queryParams.size"
       @pagination="getList" />
 
-    <el-dialog v-model="createDialogVisible" title="创建商品" width="600px" @close="createDialogVisible = false">
-      <el-form :model="createForm" :rules="createFormRules" label-width="90px">
+    <el-dialog v-model="createDialogVisible" title="创建商品" width="800px" @close="createDialogVisible = false">
+      <el-steps :active="createStep" finish-status="success" simple>
+        <el-step title="基本信息" />
+        <el-step title="详细描述" />
+        <el-step title="规格设置" />
+      </el-steps>
+      <el-form :model="createForm" :rules="createFormRules" label-width="90px" v-show="createStep === 0">
         <el-form-item label="商品分类" prop="categoryId">
           <el-tree-select v-model="createForm.categoryId" :data="categoryTree"
             :props="{ label: 'name', value: 'id', children: 'children' }" placeholder="请选择商品分类" check-strictly
@@ -67,9 +72,13 @@
         <el-form-item label="商品名称" prop="name">
           <el-input v-model="createForm.name" placeholder="请输入商品名称" />
         </el-form-item>
+      </el-form>
+      <el-form :model="createForm" :rules="createFormRules" label-width="90px" v-show="createStep === 1">
         <el-form-item label="详细描述" prop="detailDesc">
-          <Editor ref="createEditorRef" v-model="createForm.detailDesc" :defaultContent="createForm.detailDesc" />
+          <Editor v-model="createForm.detailDesc" :height="400" />
         </el-form-item>
+      </el-form>
+      <el-form :model="createForm" :rules="createFormRules" label-width="90px" v-show="createStep === 2">
         <el-form-item label="规格">
           <div class="spec-container">
             <div style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
@@ -92,24 +101,34 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="createDialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="handleCreateConfirm">确 定</el-button>
+        <el-button @click="createStep > 0 ? createStep-- : createDialogVisible = false">上一步</el-button>
+        <el-button v-if="createStep < 2" type="primary" @click="createStep++">下一步</el-button>
+        <el-button v-else type="primary" @click="handleCreateConfirm">确 定</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="editDialogVisible" title="编辑商品" width="600px" @close="editDialogVisible = false">
-      <el-form :model="editForm" :rules="editFormRules" label-width="90px">
+    <el-dialog v-model="editDialogVisible" title="编辑商品" width="800px" @close="editDialogVisible = false">
+      <el-steps :active="editStep" finish-status="success" simple>
+        <el-step title="基本信息" />
+        <el-step title="详细描述" />
+        <el-step title="规格设置" />
+      </el-steps>
+      <el-form :model="editForm" :rules="editFormRules" label-width="90px" v-show="editStep === 0">
         <el-form-item label="商品名称" prop="name">
           <el-input v-model="editForm.name" placeholder="请输入商品名称" />
-        </el-form-item>
-        <el-form-item label="详细描述" prop="detailDesc">
-          <Editor ref="editEditorRef" v-model="editForm.detailDesc" :defaultContent="editForm.detailDesc" />
         </el-form-item>
         <el-form-item label="商品分类" prop="categoryId">
           <el-tree-select v-model="editForm.categoryId" :data="categoryTree"
             :props="{ label: 'name', value: 'id', children: 'children' }" placeholder="请选择商品分类" check-strictly
             :render-after-expand="false" style="width: 100%" />
         </el-form-item>
+      </el-form>
+      <el-form :model="editForm" :rules="editFormRules" label-width="90px" v-show="editStep === 1">
+        <el-form-item label="详细描述" prop="detailDesc">
+          <Editor v-model="editForm.detailDesc" :height="400" />
+        </el-form-item>
+      </el-form>
+      <el-form :model="editForm" :rules="editFormRules" label-width="90px" v-show="editStep === 2">
         <el-form-item label="规格">
           <div class="spec-container">
             <div style="margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
@@ -133,8 +152,9 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="editDialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="handleEditConfirm">确 定</el-button>
+        <el-button @click="editStep > 0 ? editStep-- : editDialogVisible = false">上一步</el-button>
+        <el-button v-if="editStep < 2" type="primary" @click="editStep++">下一步</el-button>
+        <el-button v-else type="primary" @click="handleEditConfirm">确 定</el-button>
       </template>
     </el-dialog>
 
@@ -201,8 +221,7 @@ import ImagePreview from '@/components/ImagePreview/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Close, CircleCheck, PriceTag } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
-import { Editor } from '@wangeditor/editor-for-vue'
-import '@wangeditor/editor/dist/css/style.css'
+import Editor from '@/components/Editor'
 
 const tableData = ref([])
 const loading = ref(false)
@@ -223,16 +242,16 @@ const queryParams = ref({
 })
 
 const createDialogVisible = ref(false)
+const createStep = ref(0)
 const createForm = ref({ name: '', categoryId: '', specs: [], detailDesc: '' })
-const createEditorRef = ref()
 const createFormRules = {
   name: [ { required: true, message: '请输入商品名称', trigger: 'blur' } ],
   categoryId: [ { required: true, message: '请输入所属分类', trigger: 'blur' } ]
 }
 
 const editDialogVisible = ref(false)
+const editStep = ref(0)
 const editForm = ref({ id: '', name: '', categoryId: '', specs: [], detailDesc: '' })
-const editEditorRef = ref()
 const editFormRules = {
   name: [ { required: true, message: '请输入商品名称', trigger: 'blur' } ],
   categoryId: [ { required: true, message: '请选择所属分类', trigger: 'blur' } ]
@@ -353,6 +372,7 @@ function handleSelectionChange(selection) {
 }
 function handleAdd() {
   createForm.value = { name: '', categoryId: '', specs: [], detailDesc: '' }
+  createStep.value = 0
   selectedSpecs.value = []
   fetchSpecs()
   createDialogVisible.value = true
@@ -425,6 +445,7 @@ function handleUpdate(row) {
   })
 
     // 数据加载完成后显示编辑弹窗
+    editStep.value = 0;
     editDialogVisible.value = true;
   }).catch(error => {
     console.error('获取产品详情失败:', error);
