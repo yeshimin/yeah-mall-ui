@@ -41,7 +41,7 @@
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="省份" prop="province" required>
-              <el-select v-model="shippingForm.province" placeholder="请选择省份" @change="handleProvinceChange">
+              <el-select v-model="shippingForm.provinceCode" placeholder="请选择省份" @change="handleProvinceChange">
                 <el-option 
                   v-for="province in provinces" 
                   :key="province.value" 
@@ -53,7 +53,7 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="城市" prop="city" required>
-              <el-select v-model="shippingForm.city" placeholder="请选择城市" @change="handleCityChange">
+              <el-select v-model="shippingForm.cityCode" placeholder="请选择城市" @change="handleCityChange">
                 <el-option 
                   v-for="city in cities" 
                   :key="city.value" 
@@ -65,7 +65,7 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="区/县" prop="district" required>
-              <el-select v-model="shippingForm.district" placeholder="请选择区/县">
+              <el-select v-model="shippingForm.districtCode" placeholder="请选择区/县" @change="handleDistrictChange">
                 <el-option 
                   v-for="district in districts" 
                   :key="district.value" 
@@ -175,9 +175,7 @@ import {
   getLogisticsList, 
   saveLogistics, 
   deleteLogistics,
-  getProvinceList,
-  getCityList,
-  getDistrictList
+  getAreaTree
 } from '@/api/mall/shipping';
 
 // 加载状态
@@ -194,20 +192,17 @@ const shippingForm = reactive({
   senderPhone: '',
   senderAddress: '',
   province: '',
+  provinceCode: '',
   city: '',
+  cityCode: '',
   district: '',
+  districtCode: '',
   postalCode: ''
 });
 
 // 省市区数据
-const provinces = ref([
-  { label: '广东省', value: '广东省' },
-  { label: '北京市', value: '北京市' },
-  { label: '上海市', value: '上海市' },
-  { label: '浙江省', value: '浙江省' },
-  { label: '江苏省', value: '江苏省' }
-]);
-
+const areaTree = ref([]);
+const provinces = ref([]);
 const cities = ref([]);
 const districts = ref([]);
 
@@ -251,70 +246,66 @@ const editingLogistics = reactive({
 });
 
 // 处理省份变化
-const handleProvinceChange = async (province) => {
+const handleProvinceChange = (provinceCode) => {
   shippingForm.city = '';
+  shippingForm.cityCode = '';
   shippingForm.district = '';
+  shippingForm.districtCode = '';
   
-  try {
-    // 实际项目中调用API获取城市数据
-    // const response = await getCityList(province);
-    // cities.value = response.data;
-    
-    // 模拟城市数据
-    if (province === '广东省') {
-      cities.value = [
-        { label: '广州市', value: '广州市' },
-        { label: '深圳市', value: '深圳市' },
-        { label: '东莞市', value: '东莞市' }
-      ];
-    } else if (province === '北京市') {
-      cities.value = [
-        { label: '北京市', value: '北京市' }
-      ];
-    } else if (province === '上海市') {
-      cities.value = [
-        { label: '上海市', value: '上海市' }
-      ];
-    } else {
-      cities.value = [];
-    }
-    
-    districts.value = [];
-  } catch (error) {
-    console.error('获取城市列表失败:', error);
-    ElMessage.error('获取城市列表失败');
+  // 从树形数据中获取对应省份的城市
+  const selectedProvince = areaTree.value.find(item => item.code === provinceCode);
+  if (selectedProvince && selectedProvince.children) {
+    cities.value = selectedProvince.children.map(city => ({
+      label: city.name,
+      value: city.code
+    }));
+  } else {
+    cities.value = [];
+  }
+  
+  districts.value = [];
+  
+  // 更新省份名称
+  const provinceItem = provinces.value.find(item => item.value === provinceCode);
+  if (provinceItem) {
+    shippingForm.province = provinceItem.label;
   }
 };
 
 // 处理城市变化
-const handleCityChange = async (city) => {
+const handleCityChange = (cityCode) => {
   shippingForm.district = '';
+  shippingForm.districtCode = '';
   
-  try {
-    // 实际项目中调用API获取区县数据
-    // const response = await getDistrictList(city);
-    // districts.value = response.data;
-    
-    // 模拟区县数据
-    if (city === '广州市') {
-      districts.value = [
-        { label: '天河区', value: '天河区' },
-        { label: '海珠区', value: '海珠区' },
-        { label: '白云区', value: '白云区' },
-        { label: '番禺区', value: '番禺区' }
-      ];
-    } else if (city === '深圳市') {
-      districts.value = [
-        { label: '福田区', value: '福田区' },
-        { label: '南山区', value: '南山区' },
-        { label: '宝安区', value: '宝安区' }
-      ];
-    } else {
-      districts.value = [];
-    }
-  } catch (error) {
-    console.error('获取区县列表失败:', error);
-    ElMessage.error('获取区县列表失败');
+  // 从树形数据中获取对应城市的区县
+  let selectedCity = null;
+  for (const province of areaTree.value) {
+    selectedCity = province.children.find(city => city.code === cityCode);
+    if (selectedCity) break;
+  }
+  
+  if (selectedCity && selectedCity.children) {
+    districts.value = selectedCity.children.map(district => ({
+      label: district.name,
+      value: district.code
+    }));
+  } else {
+    districts.value = [];
+  }
+  
+  // 更新城市名称
+  const cityItem = cities.value.find(item => item.value === cityCode);
+  if (cityItem) {
+    shippingForm.city = cityItem.label;
+  }
+};
+
+// 处理区县变化
+const handleDistrictChange = (districtCode) => {
+  // 更新区县名称
+  const districtItem = districts.value.find(item => item.value === districtCode);
+  if (districtItem) {
+    shippingForm.district = districtItem.label;
   }
 };
 
@@ -332,13 +323,14 @@ const handleSaveBasicInfo = async () => {
       };
       
       // 实际项目中调用API保存数据
-      // await saveShippingInfo(saveData);
-      
-      // 模拟API调用
-      setTimeout(() => {
+      const response = await saveShippingInfo(saveData);
+      if (response.code === 0) {
         basicInfoLoading.value = false;
         ElMessage.success('保存基本信息成功');
-      }, 1000);
+      } else {
+        basicInfoLoading.value = false;
+        ElMessage.error(response.message || '保存失败');
+      }
     }
   } catch (error) {
     basicInfoLoading.value = false;
@@ -455,24 +447,40 @@ const handleDefaultLogistics = (row) => {
 // 初始化数据
 const initData = async () => {
   try {
-    // 实际项目中调用API获取数据
-    // const [shippingRes, logisticsRes] = await Promise.all([
-    //   getShippingInfo(),
-    //   getLogisticsList()
-    // ]);
+    // 获取省市区树形数据
+    const areaRes = await getAreaTree();
+    if (areaRes.code === 0 && areaRes.data) {
+      areaTree.value = areaRes.data;
+      // 构建省份列表
+      provinces.value = areaRes.data.map(province => ({
+        label: province.name,
+        value: province.code
+      }));
+    }
     
-    // 模拟数据
-    shippingForm.senderName = '张三';
-    shippingForm.senderPhone = '13800138000';
-    shippingForm.senderAddress = '天河区珠江新城冼村路28号';
-    shippingForm.province = '广东省';
-    shippingForm.city = '广州市';
-    shippingForm.district = '天河区';
-    shippingForm.postalCode = '510623';
+    // 实际项目中调用API获取数据
+    const shippingRes = await getShippingInfo();
+    if (shippingRes.code === 0 && shippingRes.data) {
+      const data = shippingRes.data;
+      shippingForm.senderName = data.senderName || '';
+      shippingForm.senderPhone = data.senderPhone || '';
+      shippingForm.senderAddress = data.senderAddress || '';
+      shippingForm.province = data.province || '';
+      shippingForm.provinceCode = data.provinceCode || '';
+      shippingForm.city = data.city || '';
+      shippingForm.cityCode = data.cityCode || '';
+      shippingForm.district = data.district || '';
+      shippingForm.districtCode = data.districtCode || '';
+      shippingForm.postalCode = data.postalCode || '';
+    }
     
     // 初始化城市和区县
-    handleProvinceChange('广东省');
-    handleCityChange('广州市');
+    if (shippingForm.provinceCode) {
+      handleProvinceChange(shippingForm.provinceCode);
+      if (shippingForm.cityCode) {
+        handleCityChange(shippingForm.cityCode);
+      }
+    }
   } catch (error) {
     console.error('初始化数据失败:', error);
     ElMessage.error('加载数据失败');

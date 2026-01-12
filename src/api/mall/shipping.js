@@ -42,6 +42,15 @@ export function deleteLogistics(id) {
   })
 }
 
+// 获取省市区树形数据
+export function getAreaTree(maxLevel = 3) {
+  return request({
+    url: `/mch/area/tree`,
+    method: 'get',
+    params: { maxLevel }
+  })
+}
+
 // 获取省份列表
 export function getProvinceList() {
   return request({
