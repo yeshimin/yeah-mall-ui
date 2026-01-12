@@ -1,17 +1,11 @@
 <template>
+
   <div class="shipping-settings">
     <!-- 页面头部 -->
     <div class="page-header">
       <h2>发货信息设置</h2>
-      <div class="action-buttons">
-        <el-button type="primary" @click="handleSave" :loading="loading">
-          <span>保存设置</span>
-        </el-button>
-        <el-button @click="handleCancel">
-          <span>取消</span>
-        </el-button>
-      </div>
     </div>
+
 
     <!-- 基本信息卡片 -->
     <el-card class="info-card">
@@ -89,19 +83,12 @@
               <el-input v-model="shippingForm.postalCode" placeholder="请输入邮政编码"></el-input>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="发货仓库" prop="warehouseId">
-              <el-select v-model="shippingForm.warehouseId" placeholder="请选择发货仓库">
-                <el-option 
-                  v-for="warehouse in warehouses" 
-                  :key="warehouse.id" 
-                  :label="warehouse.name" 
-                  :value="warehouse.id"
-                ></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
         </el-row>
+        
+        <el-form-item>
+          <el-button type="primary" @click="handleSaveBasicInfo" :loading="basicInfoLoading">保存基本信息</el-button>
+          <el-button @click="resetBasicInfo">重置</el-button>
+        </el-form-item>
       </el-form>
     </el-card>
 
@@ -145,36 +132,6 @@
       </div>
     </el-card>
 
-    <!-- 发货模板设置卡片 -->
-    <el-card class="info-card">
-      <template #header>
-        <div class="card-header">
-          <h3>发货模板设置</h3>
-          <p class="el-text el-text--tip">设置不同商品类型的发货模板，提高发货效率</p>
-        </div>
-      </template>
-      
-      <div class="template-section">
-        <el-button type="primary" plain class="add-template-btn" @click="handleAddTemplate">
-          <el-icon><Plus /></el-icon>
-          添加发货模板
-        </el-button>
-        
-        <el-table :data="templateList" style="width: 100%; margin-top: 20px;">
-          <el-table-column prop="name" label="模板名称" width="180"></el-table-column>
-          <el-table-column prop="description" label="模板描述"></el-table-column>
-          <el-table-column prop="logisticsCompany" label="默认物流商" width="150"></el-table-column>
-          <el-table-column prop="weight" label="默认重量(g)" width="120"></el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
-            <template #default="scope">
-              <el-button size="small" @click="handleEditTemplate(scope.row)">编辑</el-button>
-              <el-button size="small" type="danger" @click="handleDeleteTemplate(scope.row)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-    </el-card>
-
     <!-- 物流商编辑对话框 -->
     <el-dialog 
       v-model="logisticsDialogVisible" 
@@ -205,56 +162,11 @@
         </span>
       </template>
     </el-dialog>
-
-    <!-- 模板编辑对话框 -->
-    <el-dialog 
-      v-model="templateDialogVisible" 
-      :title="editingTemplate.id ? '编辑发货模板' : '添加发货模板'"
-      width="500px"
-    >
-      <el-form ref="templateFormRef" :model="editingTemplate" label-width="100px">
-        <el-form-item label="模板名称" prop="name" required>
-          <el-input v-model="editingTemplate.name" placeholder="请输入模板名称"></el-input>
-        </el-form-item>
-        <el-form-item label="模板描述" prop="description">
-          <el-input 
-            v-model="editingTemplate.description" 
-            type="textarea" 
-            placeholder="请输入模板描述"
-            rows="3"
-          ></el-input>
-        </el-form-item>
-        <el-form-item label="默认物流商" prop="logisticsCompanyId" required>
-          <el-select v-model="editingTemplate.logisticsCompanyId" placeholder="请选择物流商">
-            <el-option 
-              v-for="logistics in logisticsList" 
-              :key="logistics.id" 
-              :label="logistics.name" 
-              :value="logistics.id"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="默认重量(g)" prop="weight" required>
-          <el-input-number 
-            v-model="editingTemplate.weight" 
-            :min="0" 
-            :step="10" 
-            placeholder="请输入默认重量"
-          ></el-input-number>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="templateDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSaveTemplate" :loading="templateLoading">保存</el-button>
-        </span>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import { 
@@ -263,24 +175,18 @@ import {
   getLogisticsList, 
   saveLogistics, 
   deleteLogistics,
-  getTemplateList,
-  saveTemplate,
-  deleteTemplate,
-  getWarehouseList,
   getProvinceList,
   getCityList,
   getDistrictList
 } from '@/api/mall/shipping';
 
 // 加载状态
-const loading = ref(false);
 const logisticsLoading = ref(false);
-const templateLoading = ref(false);
+const basicInfoLoading = ref(false);
 
 // 表单引用
 const shippingFormRef = ref(null);
 const logisticsFormRef = ref(null);
-const templateFormRef = ref(null);
 
 // 发货信息表单
 const shippingForm = reactive({
@@ -290,8 +196,7 @@ const shippingForm = reactive({
   province: '',
   city: '',
   district: '',
-  postalCode: '',
-  warehouseId: ''
+  postalCode: ''
 });
 
 // 省市区数据
@@ -305,12 +210,6 @@ const provinces = ref([
 
 const cities = ref([]);
 const districts = ref([]);
-
-// 仓库数据
-const warehouses = ref([
-  { id: '1', name: '主仓库' },
-  { id: '2', name: '备用仓库' }
-]);
 
 // 物流商列表
 const logisticsList = ref([
@@ -340,26 +239,6 @@ const logisticsList = ref([
   }
 ]);
 
-// 发货模板列表
-const templateList = ref([
-  {
-    id: 1,
-    name: '标准商品模板',
-    description: '适用于大多数标准商品',
-    logisticsCompanyId: 1,
-    logisticsCompany: '顺丰速运',
-    weight: 500
-  },
-  {
-    id: 2,
-    name: '小件商品模板',
-    description: '适用于重量较轻的小件商品',
-    logisticsCompanyId: 2,
-    logisticsCompany: '中通快递',
-    weight: 200
-  }
-]);
-
 // 物流商编辑对话框
 const logisticsDialogVisible = ref(false);
 const editingLogistics = reactive({
@@ -369,17 +248,6 @@ const editingLogistics = reactive({
   contact: '',
   phone: '',
   isDefault: false
-});
-
-// 模板编辑对话框
-const templateDialogVisible = ref(false);
-const editingTemplate = reactive({
-  id: null,
-  name: '',
-  description: '',
-  logisticsCompanyId: '',
-  logisticsCompany: '',
-  weight: 0
 });
 
 // 处理省份变化
@@ -450,18 +318,17 @@ const handleCityChange = async (city) => {
   }
 };
 
-// 处理保存设置
-const handleSave = async () => {
+
+// 处理保存基本信息
+const handleSaveBasicInfo = async () => {
   try {
     const valid = await shippingFormRef.value.validate();
     if (valid) {
-      loading.value = true;
+      basicInfoLoading.value = true;
       
       // 构建保存数据
       const saveData = {
-        ...shippingForm,
-        logisticsList: logisticsList.value,
-        templateList: templateList.value
+        ...shippingForm
       };
       
       // 实际项目中调用API保存数据
@@ -469,20 +336,19 @@ const handleSave = async () => {
       
       // 模拟API调用
       setTimeout(() => {
-        loading.value = false;
-        ElMessage.success('保存成功');
+        basicInfoLoading.value = false;
+        ElMessage.success('保存基本信息成功');
       }, 1000);
     }
   } catch (error) {
-    loading.value = false;
+    basicInfoLoading.value = false;
     console.error('保存失败:', error);
     ElMessage.error('保存失败，请重试');
   }
 };
 
-// 处理取消
-const handleCancel = () => {
-  // 重置表单
+// 处理重置基本信息
+const resetBasicInfo = () => {
   shippingFormRef.value.resetFields();
 };
 
@@ -586,103 +452,13 @@ const handleDefaultLogistics = (row) => {
   }
 };
 
-// 处理添加模板
-const handleAddTemplate = () => {
-  Object.assign(editingTemplate, {
-    id: null,
-    name: '',
-    description: '',
-    logisticsCompanyId: '',
-    logisticsCompany: '',
-    weight: 0
-  });
-  templateDialogVisible.value = true;
-};
-
-// 处理编辑模板
-const handleEditTemplate = (row) => {
-  Object.assign(editingTemplate, { ...row });
-  templateDialogVisible.value = true;
-};
-
-// 处理删除模板
-const handleDeleteTemplate = (row) => {
-  ElMessageBox.confirm(
-    `确定要删除模板"${row.name}"吗？`,
-    '删除确认',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(async () => {
-    try {
-      // 实际项目中调用API删除
-      // await deleteTemplate(row.id);
-      
-      // 模拟删除
-      const index = templateList.value.findIndex(item => item.id === row.id);
-      if (index !== -1) {
-        templateList.value.splice(index, 1);
-        ElMessage.success('删除成功');
-      }
-    } catch (error) {
-      console.error('删除失败:', error);
-      ElMessage.error('删除失败，请重试');
-    }
-  }).catch(() => {});
-};
-
-// 处理保存模板
-const handleSaveTemplate = async () => {
-  try {
-    const valid = await templateFormRef.value.validate();
-    if (valid) {
-      templateLoading.value = true;
-      
-      // 获取物流商名称
-      const logistics = logisticsList.value.find(item => item.id === editingTemplate.logisticsCompanyId);
-      if (logistics) {
-        editingTemplate.logisticsCompany = logistics.name;
-      }
-      
-      // 实际项目中调用API保存
-      // await saveTemplate(editingTemplate);
-      
-      // 模拟保存
-      if (editingTemplate.id) {
-        // 编辑
-        const index = templateList.value.findIndex(item => item.id === editingTemplate.id);
-        if (index !== -1) {
-          templateList.value[index] = { ...editingTemplate };
-        }
-      } else {
-        // 添加
-        const newId = Math.max(...templateList.value.map(item => item.id), 0) + 1;
-        editingTemplate.id = newId;
-        templateList.value.push({ ...editingTemplate });
-      }
-      
-      templateDialogVisible.value = false;
-      templateLoading.value = false;
-      ElMessage.success('保存成功');
-    }
-  } catch (error) {
-    templateLoading.value = false;
-    console.error('保存失败:', error);
-    ElMessage.error('保存失败，请重试');
-  }
-};
-
 // 初始化数据
 const initData = async () => {
   try {
     // 实际项目中调用API获取数据
-    // const [shippingRes, logisticsRes, templateRes, warehouseRes] = await Promise.all([
+    // const [shippingRes, logisticsRes] = await Promise.all([
     //   getShippingInfo(),
-    //   getLogisticsList(),
-    //   getTemplateList(),
-    //   getWarehouseList()
+    //   getLogisticsList()
     // ]);
     
     // 模拟数据
@@ -693,7 +469,6 @@ const initData = async () => {
     shippingForm.city = '广州市';
     shippingForm.district = '天河区';
     shippingForm.postalCode = '510623';
-    shippingForm.warehouseId = '1';
     
     // 初始化城市和区县
     handleProvinceChange('广东省');
@@ -757,8 +532,7 @@ export default {
   margin-top: 10px;
 }
 
-.add-logistics-btn,
-.add-template-btn {
+.add-logistics-btn {
   margin-bottom: 20px;
 }
 

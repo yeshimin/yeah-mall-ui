@@ -42,39 +42,6 @@ export function deleteLogistics(id) {
   })
 }
 
-// 获取发货模板列表
-export function getTemplateList() {
-  return request({
-    url: '/mch/shipping/template/list',
-    method: 'get'
-  })
-}
-
-// 保存发货模板
-export function saveTemplate(data) {
-  return request({
-    url: '/mch/shipping/template/save',
-    method: 'post',
-    data: data
-  })
-}
-
-// 删除发货模板
-export function deleteTemplate(id) {
-  return request({
-    url: `/mch/shipping/template/delete/${id}`,
-    method: 'delete'
-  })
-}
-
-// 获取仓库列表
-export function getWarehouseList() {
-  return request({
-    url: '/mch/shipping/warehouse/list',
-    method: 'get'
-  })
-}
-
 // 获取省份列表
 export function getProvinceList() {
   return request({
