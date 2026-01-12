@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>商家发货信息设置</title>
+    <!-- Element Plus CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <!-- 统一的样式 -->
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .el-card {
+            margin-bottom: 20px;
+        }
+        .el-form-item__label {
+            font-weight: 500;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header h2 {
+            color: #303133;
+            margin: 0;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .info-section {
+            margin-bottom: 30px;
+        }
+        .info-section h3 {
+            color: #606266;
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .el-divider {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 页面头部 -->
+        <div class="header">
+            <h2>发货信息设置</h2>
+            <div class="action-buttons">
+                <button type="button" class="el-button el-button--primary">
+                    <span>保存设置</span>
+                </button>
+                <button type="button" class="el-button">
+                    <span>取消</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 基本信息卡片 -->
+        <el-card class="info-card">
+            <template #header>
+                <div class="info-section">
+                    <h3>基本发货信息</h3>
+                    <p class="el-text el-text--tip">设置商家的默认发货信息，用于订单发货时自动填充</p>
+                </div>
+            </template>
+            
+            <el-form :model="shippingForm" label-width="120px" class="shipping-form">
+                <el-row :gutter="20">
+                    <el-col :span="12">
+                        <el-form-item label="发货人姓名" required>
+                            <el-input v-model="shippingForm.senderName" placeholder="请输入发货人姓名"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="12">
+                        <el-form-item label="联系电话" required>
+                            <el-input v-model="shippingForm.senderPhone" placeholder="请输入联系电话"></el-input>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
+                
+                <el-row :gutter="20">
+                    <el-col :span="24">
+                        <el-form-item label="发货地址" required>
+                            <el-input v-model="shippingForm.senderAddress" placeholder="请输入详细发货地址"></el-input>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
+                
+                <el-row :gutter="20">
+                    <el-col :span="8">
+                        <el-form-item label="省份" required>
+                            <el-select v-model="shippingForm.province" placeholder="请选择省份">
+                                <el-option label="广东省" value="广东省"></el-option>
+                                <el-option label="北京市" value="北京市"></el-option>
+                                <el-option label="上海市" value="上海市"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="城市" required>
+                            <el-select v-model="shippingForm.city" placeholder="请选择城市">
+                                <el-option label="广州市" value="广州市"></el-option>
+                                <el-option label="深圳市" value="深圳市"></el-option>
+                                <el-option label="东莞市" value="东莞市"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="区/县" required>
+                            <el-select v-model="shippingForm.district" placeholder="请选择区/县">
+                                <el-option label="天河区" value="天河区"></el-option>
+                                <el-option label="海珠区" value="海珠区"></el-option>
+                                <el-option label="白云区" value="白云区"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
+                
+                <el-row :gutter="20">
+                    <el-col :span="12">
+                        <el-form-item label="邮政编码">
+                            <el-input v-model="shippingForm.postalCode" placeholder="请输入邮政编码"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="12">
+                        <el-form-item label="发货仓库">
+                            <el-select v-model="shippingForm.warehouseId" placeholder="请选择发货仓库">
+                                <el-option label="主仓库" value="1"></el-option>
+                                <el-option label="备用仓库" value="2"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
+            </el-form>
+        </el-card>
+
+        <!-- 物流商设置卡片 -->
+        <el-card class="info-card">
+            <template #header>
+                <div class="info-section">
+                    <h3>物流商设置</h3>
+                    <p class="el-text el-text--tip">设置常用物流商信息，用于发货时选择</p>
+                </div>
+            </template>
+            
+            <div class="logistics-section">
+                <el-button type="primary" plain class="add-logistics-btn">
+                    <el-icon><Plus /></el-icon>
+                    添加物流商
+                </el-button>
+                
+                <el-table :data="logisticsList" style="width: 100%; margin-top: 20px;">
+                    <el-table-column prop="name" label="物流商名称" width="180"></el-table-column>
+                    <el-table-column prop="code" label="物流商编码" width="180"></el-table-column>
+                    <el-table-column prop="contact" label="联系人" width="120"></el-table-column>
+                    <el-table-column prop="phone" label="联系电话" width="150"></el-table-column>
+                    <el-table-column prop="isDefault" label="是否默认" width="100">
+                        <template #default="scope">
+                            <el-switch v-model="scope.row.isDefault" active-text="是" inactive-text="否"></el-switch>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="150" fixed="right">
+                        <template #default="scope">
+                            <el-button size="small" @click="editLogistics(scope.row)">编辑</el-button>
+                            <el-button size="small" type="danger" @click="deleteLogistics(scope.row)">删除</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </div>
+        </el-card>
+
+        <!-- 发货模板设置卡片 -->
+        <el-card class="info-card">
+            <template #header>
+                <div class="info-section">
+                    <h3>发货模板设置</h3>
+                    <p class="el-text el-text--tip">设置不同商品类型的发货模板，提高发货效率</p>
+                </div>
+            </template>
+            
+            <div class="template-section">
+                <el-button type="primary" plain class="add-template-btn">
+                    <el-icon><Plus /></el-icon>
+                    添加发货模板
+                </el-button>
+                
+                <el-table :data="templateList" style="width: 100%; margin-top: 20px;">
+                    <el-table-column prop="name" label="模板名称" width="180"></el-table-column>
+                    <el-table-column prop="description" label="模板描述"></el-table-column>
+                    <el-table-column prop="logisticsCompany" label="默认物流商" width="150"></el-table-column>
+                    <el-table-column prop="weight" label="默认重量(g)" width="120"></el-table-column>
+                    <el-table-column label="操作" width="150" fixed="right">
+                        <template #default="scope">
+                            <el-button size="small" @click="editTemplate(scope.row)">编辑</el-button>
+                            <el-button size="small" type="danger" @click="deleteTemplate(scope.row)">删除</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </div>
+        </el-card>
+    </div>
+
+    <!-- Element Plus JS -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus/dist/index.full.js"></script>
+    <script>
+        const { createApp, ref, reactive } = Vue;
+        
+        createApp({
+            setup() {
+                // 发货信息表单
+                const shippingForm = reactive({
+                    senderName: '张三',
+                    senderPhone: '13800138000',
+                    senderAddress: '天河区珠江新城冼村路28号',
+                    province: '广东省',
+                    city: '广州市',
+                    district: '天河区',
+                    postalCode: '510623',
+                    warehouseId: '1'
+                });
+
+                // 物流商列表
+                const logisticsList = ref([
+                    {
+                        id: 1,
+                        name: '顺丰速运',
+                        code: 'SF',
+                        contact: '顺丰客服',
+                        phone: '95338',
+                        isDefault: true
+                    },
+                    {
+                        id: 2,
+                        name: '中通快递',
+                        code: 'ZT',
+                        contact: '中通客服',
+                        phone: '95311',
+                        isDefault: false
+                    },
+                    {
+                        id: 3,
+                        name: '圆通快递',
+                        code: 'YT',
+                        contact: '圆通客服',
+                        phone: '95554',
+                        isDefault: false
+                    }
+                ]);
+
+                // 发货模板列表
+                const templateList = ref([
+                    {
+                        id: 1,
+                        name: '标准商品模板',
+                        description: '适用于大多数标准商品',
+                        logisticsCompany: '顺丰速运',
+                        weight: 500
+                    },
+                    {
+                        id: 2,
+                        name: '小件商品模板',
+                        description: '适用于重量较轻的小件商品',
+                        logisticsCompany: '中通快递',
+                        weight: 200
+                    }
+                ]);
+
+                // 编辑物流商
+                const editLogistics = (row) => {
+                    console.log('编辑物流商:', row);
+                };
+
+                // 删除物流商
+                const deleteLogistics = (row) => {
+                    console.log('删除物流商:', row);
+                };
+
+                // 编辑模板
+                const editTemplate = (row) => {
+                    console.log('编辑模板:', row);
+                };
+
+                // 删除模板
+                const deleteTemplate = (row) => {
+                    console.log('删除模板:', row);
+                };
+
+                return {
+                    shippingForm,
+                    logisticsList,
+                    templateList,
+                    editLogistics,
+                    deleteLogistics,
+                    editTemplate,
+                    deleteTemplate
+                };
+            }
+        }).use(ElementPlus).mount('body');
+    </script>
+</body>
+</html>

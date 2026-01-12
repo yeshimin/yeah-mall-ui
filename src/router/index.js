@@ -122,11 +122,39 @@ export const constantRoutes = [
         meta: { title: '个人中心', icon: 'user' }
       }
     ]
+  },
+  // 商家端路由
+  {
+    path: '/mall/shipping',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mall/shipping/index.vue'),
+        name: 'MallShippingSettings',
+        meta: { title: '发货信息设置', icon: 'truck' }
+      }
+    ]
   }
 ]
 
 // 动态路由，基于用户权限动态去加载
 export const dynamicRoutes = [
+  {
+    path: '/mall/shipping',
+    component: Layout,
+    permissions: ['mall:shipping:list'],
+    meta: { title: '发货信息设置', icon: 'truck' },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mall/shipping/index.vue'),
+        name: 'MallShippingSettings',
+        meta: { title: '发货信息设置', noCache: true }
+      }
+    ]
+  },
   {
     path: '/system/user-auth',
     component: Layout,
