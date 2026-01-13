@@ -2,18 +2,34 @@ import request from '@/utils/request'
 
 // 获取商家发货信息
 export function getShippingInfo() {
+  const shopId = localStorage.getItem('shopId') || '';
   return request({
-    url: '/mch/shipping/info',
-    method: 'get'
+    url: `/mch/deliveryInfo/query`,
+    method: 'get',
+    params: { shopId }
   })
 }
 
 // 保存商家发货信息
 export function saveShippingInfo(data) {
+  const shopId = localStorage.getItem('shopId') || '';
+  const saveData = {
+    shopId: parseInt(shopId),
+    name: data.senderName,
+    contact: data.senderPhone,
+    provinceCode: data.provinceCode,
+    provinceName: data.province,
+    cityCode: data.cityCode,
+    cityName: data.city,
+    districtCode: data.districtCode,
+    districtName: data.district,
+    detailAddress: data.senderAddress,
+    postalCode: data.postalCode
+  };
   return request({
-    url: '/mch/shipping/save',
+    url: `/mch/deliveryInfo/save`,
     method: 'post',
-    data: data
+    data: saveData
   })
 }
 
@@ -48,29 +64,5 @@ export function getAreaTree(maxLevel = 3) {
     url: `/mch/area/tree`,
     method: 'get',
     params: { maxLevel }
-  })
-}
-
-// 获取省份列表
-export function getProvinceList() {
-  return request({
-    url: '/mch/shipping/region/province',
-    method: 'get'
-  })
-}
-
-// 获取城市列表
-export function getCityList(province) {
-  return request({
-    url: `/mch/shipping/region/city/${province}`,
-    method: 'get'
-  })
-}
-
-// 获取区县列表
-export function getDistrictList(city) {
-  return request({
-    url: `/mch/shipping/region/district/${city}`,
-    method: 'get'
   })
 }

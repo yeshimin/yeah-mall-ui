@@ -87,7 +87,6 @@
         
         <el-form-item>
           <el-button type="primary" @click="handleSaveBasicInfo" :loading="basicInfoLoading">保存基本信息</el-button>
-          <el-button @click="resetBasicInfo">重置</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -247,10 +246,9 @@ const editingLogistics = reactive({
 
 // 处理省份变化
 const handleProvinceChange = (provinceCode) => {
-  shippingForm.city = '';
-  shippingForm.cityCode = '';
-  shippingForm.district = '';
-  shippingForm.districtCode = '';
+  // 保存当前的城市和区县代码
+  const currentCityCode = shippingForm.cityCode;
+  const currentDistrictCode = shippingForm.districtCode;
   
   // 从树形数据中获取对应省份的城市
   const selectedProvince = areaTree.value.find(item => item.code === provinceCode);
@@ -259,11 +257,32 @@ const handleProvinceChange = (provinceCode) => {
       label: city.name,
       value: city.code
     }));
+    
+    // 检查当前城市代码是否在新的城市列表中
+    const cityExists = selectedProvince.children.some(city => city.code === currentCityCode);
+    if (!cityExists) {
+      shippingForm.city = '';
+      shippingForm.cityCode = '';
+      shippingForm.district = '';
+      shippingForm.districtCode = '';
+      districts.value = [];
+    } else {
+      // 保持城市代码不变，更新城市名称
+      const cityItem = cities.value.find(item => item.value === currentCityCode);
+      if (cityItem) {
+        shippingForm.city = cityItem.label;
+        // 重新构建区县列表
+        handleCityChange(currentCityCode);
+      }
+    }
   } else {
     cities.value = [];
+    shippingForm.city = '';
+    shippingForm.cityCode = '';
+    shippingForm.district = '';
+    shippingForm.districtCode = '';
+    districts.value = [];
   }
-  
-  districts.value = [];
   
   // 更新省份名称
   const provinceItem = provinces.value.find(item => item.value === provinceCode);
@@ -274,8 +293,8 @@ const handleProvinceChange = (provinceCode) => {
 
 // 处理城市变化
 const handleCityChange = (cityCode) => {
-  shippingForm.district = '';
-  shippingForm.districtCode = '';
+  // 保存当前的区县代码
+  const currentDistrictCode = shippingForm.districtCode;
   
   // 从树形数据中获取对应城市的区县
   let selectedCity = null;
@@ -289,8 +308,23 @@ const handleCityChange = (cityCode) => {
       label: district.name,
       value: district.code
     }));
+    
+    // 检查当前区县代码是否在新的区县列表中
+    const districtExists = selectedCity.children.some(district => district.code === currentDistrictCode);
+    if (!districtExists) {
+      shippingForm.district = '';
+      shippingForm.districtCode = '';
+    } else {
+      // 保持区县代码不变，更新区县名称
+      const districtItem = districts.value.find(item => item.value === currentDistrictCode);
+      if (districtItem) {
+        shippingForm.district = districtItem.label;
+      }
+    }
   } else {
     districts.value = [];
+    shippingForm.district = '';
+    shippingForm.districtCode = '';
   }
   
   // 更新城市名称
@@ -340,9 +374,9 @@ const handleSaveBasicInfo = async () => {
 };
 
 // 处理重置基本信息
-const resetBasicInfo = () => {
-  shippingFormRef.value.resetFields();
-};
+// const resetBasicInfo = () => {
+//   shippingFormRef.value.resetFields();
+// };
 
 // 处理添加物流商
 const handleAddLogistics = () => {
@@ -462,28 +496,42 @@ const initData = async () => {
     const shippingRes = await getShippingInfo();
     if (shippingRes.code === 0 && shippingRes.data) {
       const data = shippingRes.data;
-      shippingForm.senderName = data.senderName || '';
-      shippingForm.senderPhone = data.senderPhone || '';
-      shippingForm.senderAddress = data.senderAddress || '';
-      shippingForm.province = data.province || '';
+      shippingForm.senderName = data.name || '';
+      shippingForm.senderPhone = data.contact || '';
+      shippingForm.senderAddress = data.detailAddress || '';
+      shippingForm.province = data.provinceName || '';
       shippingForm.provinceCode = data.provinceCode || '';
-      shippingForm.city = data.city || '';
+      shippingForm.city = data.cityName || '';
       shippingForm.cityCode = data.cityCode || '';
-      shippingForm.district = data.district || '';
+      shippingForm.district = data.districtName || '';
       shippingForm.districtCode = data.districtCode || '';
       shippingForm.postalCode = data.postalCode || '';
     }
     
     // 初始化城市和区县
-    if (shippingForm.provinceCode) {
-      handleProvinceChange(shippingForm.provinceCode);
-      if (shippingForm.cityCode) {
-        handleCityChange(shippingForm.cityCode);
-      }
-    }
+    await initAreaSelections();
   } catch (error) {
     console.error('初始化数据失败:', error);
     ElMessage.error('加载数据失败');
+  }
+};
+
+// 初始化省市区选择
+const initAreaSelections = async () => {
+  if (!shippingForm.provinceCode) return;
+  
+  // 处理省份选择
+  handleProvinceChange(shippingForm.provinceCode);
+  
+  // 等待城市列表加载
+  await new Promise(resolve => setTimeout(resolve, 200));
+  
+  // 处理城市选择
+  if (shippingForm.cityCode) {
+    handleCityChange(shippingForm.cityCode);
+    
+    // 等待区县列表加载
+    await new Promise(resolve => setTimeout(resolve, 200));
   }
 };
 
