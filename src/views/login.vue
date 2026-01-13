@@ -71,6 +71,9 @@
 </template>
 
 <script setup>
+import { ref, getCurrentInstance } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { getCodeImg } from "@/api/login";
 import { encrypt, decrypt } from "@/utils/jsencrypt";
 import useUserStore from '@/store/modules/user';
@@ -105,6 +108,18 @@ const captchaEnabled = ref(false);
 // 注册开关
 const register = ref(false);
 const redirect = ref(undefined);
+const selectedShopId = ref(null);
+
+function redirectToMainPage() {
+  const query = route.query;
+  const otherQueryParams = Object.keys(query).reduce((acc, cur) => {
+    if (cur !== "redirect") {
+      acc[cur] = query[cur];
+    }
+    return acc;
+  }, {});
+  router.push({ path: redirect.value || "/", query: otherQueryParams });
+}
 
 watch(route, (newRoute) => {
     redirect.value = newRoute.query && newRoute.query.redirect;
@@ -133,25 +148,118 @@ function handleLogin() {
         loginType: loginType.value
       };
       userStore.login(loginData).then(async () => {
-        // 仅 merchant 端登录后自动获取 shopId
+        // 仅 merchant 端登录后处理店铺
         if (loginType.value === 'merchant') {
           try {
             const res = await queryShopList({});
-            if (res.data && res.data.records && res.data.records.length > 0) {
-              localStorage.setItem('shopId', res.data.records[0].id)
+            if (res.data && res.data.records) {
+              const shopList = res.data.records;
+              
+              if (shopList.length === 0) {
+                // 店铺数量为0，提示并阻止进入
+                ElMessage.error('您还没有创建店铺，请先创建店铺后再登录');
+                loading.value = false;
+                useUserStore().logOut().then(() => {
+                  router.push({ path: '/login' });
+                });
+                return;
+              } else if (shopList.length === 1) {
+                // 店铺数量为1，直接作为默认店铺
+                localStorage.setItem('shopId', shopList[0].id);
+                localStorage.setItem('shopName', shopList[0].shopName);
+                loading.value = false;
+                // 店铺选择完成，执行跳转
+                redirectToMainPage();
+              } else {
+                // 店铺数量大于1，弹出选择对话框
+                // 创建一个简单的HTML选择界面
+                let selectedShopId = null;
+                
+                // 创建对话框内容
+                const dialogContent = `
+                  <div style="max-height: 300px; overflow-y: auto;">
+                    <h4 style="margin-bottom: 15px;">请选择要操作的店铺</h4>
+                    <div style="display: block;">
+                      ${shopList.map(shop => `
+                        <div style="margin-bottom: 10px;">
+                          <input type="radio" name="shop" value="${shop.id}" style="margin-right: 8px;" 
+                                 onchange="window.selectedShopId = this.value">
+                          <label>${shop.shopName}</label>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                `;
+                
+                // 全局变量存储选中的店铺ID
+                window.selectedShopId = null;
+                
+                // 显示对话框
+                ElMessageBox({
+                  title: '店铺选择',
+                  message: dialogContent,
+                  type: 'info',
+                  dangerouslyUseHTMLString: true,
+                  confirmButtonText: '确定',
+                  cancelButtonText: '取消',
+                  beforeClose: (action, instance, done) => {
+                    if (action === 'confirm') {
+                      const shopId = window.selectedShopId;
+                      if (shopId) {
+                        const selectedShop = shopList.find(shop => shop.id == shopId);
+                        if (selectedShop) {
+                          localStorage.setItem('shopId', selectedShop.id);
+                          localStorage.setItem('shopName', selectedShop.shopName);
+                          loading.value = false;
+                          window.selectedShopId = null;
+                          done();
+                          // 执行跳转
+                          setTimeout(() => {
+                            redirectToMainPage();
+                          }, 100);
+                        } else {
+                          ElMessage.warning('请选择店铺');
+                        }
+                      } else {
+                        ElMessage.warning('请选择店铺');
+                      }
+                    } else {
+                      loading.value = false;
+                      window.selectedShopId = null;
+                      done();
+                      useUserStore().logOut().then(() => {
+                        router.push({ path: '/login' });
+                      });
+                    }
+                  }
+                });
+              }
+            } else {
+              // 店铺列表数据异常，提示并阻止进入
+              ElMessage.error('获取店铺列表失败，请重试');
+              loading.value = false;
+              useUserStore().logOut().then(() => {
+                router.push({ path: '/login' });
+              });
+              return;
             }
-          } catch (e) {}
-        } else {
-          localStorage.removeItem('shopId')
-        }
-        const query = route.query;
-        const otherQueryParams = Object.keys(query).reduce((acc, cur) => {
-          if (cur !== "redirect") {
-            acc[cur] = query[cur];
+          } catch (e) {
+            console.error('获取店铺列表失败:', e);
+            ElMessage.error('获取店铺信息失败，请重试');
+            loading.value = false;
+            useUserStore().logOut().then(() => {
+              router.push({ path: '/login' });
+            });
+            return;
           }
-          return acc;
-        }, {});
-        router.push({ path: redirect.value || "/", query: otherQueryParams });
+        } else {
+          // 管理员登录，清除店铺信息
+          localStorage.removeItem('shopId');
+          localStorage.removeItem('shopName');
+          loading.value = false;
+          // 执行跳转
+          window.location.href = redirect.value || "/";
+        }
       }).catch(() => {
         loading.value = false;
         // 重新获取验证码
