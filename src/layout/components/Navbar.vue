@@ -29,6 +29,16 @@
           <size-select id="size-select" class="right-menu-item hover-effect" />
         </el-tooltip>
       </template>
+
+      <!-- 当前店铺和商家信息 -->
+      <div v-if="getLoginType() === 'merchant'" class="shop-merchant-info">
+        <el-tooltip :content="'当前商家: ' + userStore.name" effect="dark" placement="bottom">
+          <div class="info-item">
+            <el-icon><shop /></el-icon>
+            <span class="shop-name">{{ getCurrentShopName() }}</span>
+          </div>
+        </el-tooltip>
+      </div>
       <div class="avatar-container">
         <el-dropdown @command="handleCommand" class="right-menu-item hover-effect" trigger="click">
           <div class="avatar-wrapper">
@@ -56,6 +66,7 @@
 
 <script setup>
 import { ElMessageBox } from 'element-plus'
+import { Shop } from '@element-plus/icons-vue'
 import Breadcrumb from '@/components/Breadcrumb'
 import TopNav from '@/components/TopNav'
 import Hamburger from '@/components/Hamburger'
@@ -67,10 +78,25 @@ import RuoYiDoc from '@/components/RuoYi/Doc'
 import useAppStore from '@/store/modules/app'
 import useUserStore from '@/store/modules/user'
 import useSettingsStore from '@/store/modules/settings'
+import { getLoginType } from '@/store/modules/user'
 
 const appStore = useAppStore()
 const userStore = useUserStore()
 const settingsStore = useSettingsStore()
+
+// 获取当前店铺名称
+function getCurrentShopName() {
+  try {
+    const currentShop = localStorage.getItem('currentShop');
+    if (currentShop) {
+      const shop = JSON.parse(currentShop);
+      return shop.name || '未选择店铺';
+    }
+  } catch (e) {
+    console.error('获取店铺信息失败:', e);
+  }
+  return '未选择店铺';
+}
 
 function toggleSideBar() {
   appStore.toggleSideBar()
@@ -151,9 +177,41 @@ function toggleTheme() {
     height: 100%;
     line-height: 50px;
     display: flex;
+    align-items: center;
+    gap: 8px;
 
     &:focus {
       outline: none;
+    }
+
+    .shop-merchant-info {
+      display: flex;
+      align-items: center;
+
+      .info-item {
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        height: 32px;
+        background-color: rgba(0, 0, 0, 0.025);
+        border-radius: 16px;
+        cursor: pointer;
+        transition: all 0.3s;
+
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .shop-name {
+          margin-left: 8px;
+          font-size: 14px;
+          color: var(--navbar-text);
+          max-width: 150px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
     }
 
     .right-menu-item {
@@ -188,7 +246,7 @@ function toggleTheme() {
     }
 
     .avatar-container {
-      margin-right: 40px;
+      margin-right: 16px;
 
       .avatar-wrapper {
         margin-top: 5px;

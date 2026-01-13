@@ -64,7 +64,8 @@ const useUserStore = defineStore(
               this.roles = ['ROLE_DEFAULT']
             }
             this.id = user.id
-            this.name = user.username
+            // 对于商家，使用loginAccount作为name
+            this.name = loginType === 'merchant' ? user.loginAccount : user.username
             this.avatar = avatar
             resolve(res)
           }).catch(error => {

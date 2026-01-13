@@ -167,32 +167,42 @@ function handleLogin() {
                 // 店铺数量为1，直接作为默认店铺
                 localStorage.setItem('shopId', shopList[0].id);
                 localStorage.setItem('shopName', shopList[0].shopName);
+                // 同时存储为currentShop对象，供导航栏显示使用
+                localStorage.setItem('currentShop', JSON.stringify({
+                  id: shopList[0].id,
+                  name: shopList[0].shopName
+                }));
                 loading.value = false;
                 // 店铺选择完成，执行跳转
                 redirectToMainPage();
               } else {
                 // 店铺数量大于1，弹出选择对话框
-                // 创建一个简单的HTML选择界面
-                let selectedShopId = null;
+                // 全局变量存储选中的店铺ID
+                window.selectedShopId = null;
                 
                 // 创建对话框内容
-                const dialogContent = `
+                let dialogContent = `
                   <div style="max-height: 300px; overflow-y: auto;">
                     <h4 style="margin-bottom: 15px;">请选择要操作的店铺</h4>
                     <div style="display: block;">
-                      ${shopList.map(shop => `
-                        <div style="margin-bottom: 10px;">
-                          <input type="radio" name="shop" value="${shop.id}" style="margin-right: 8px;" 
-                                 onchange="window.selectedShopId = this.value">
-                          <label>${shop.shopName}</label>
-                        </div>
-                      `).join('')}
+                `;
+                
+                // 为每个店铺生成HTML
+                shopList.forEach(shop => {
+                  dialogContent += `
+                    <div style="margin-bottom: 10px; padding: 8px; border-radius: 4px; cursor: pointer;" 
+                         onclick="window.selectedShopId = '${shop.id}'; document.querySelectorAll('input[name=shop]').forEach(r => r.checked = r.value == '${shop.id}')">
+                      <input type="radio" name="shop" value="${shop.id}" style="margin-right: 8px;" 
+                             onchange="window.selectedShopId = this.value">
+                      <label style="cursor: pointer;">${shop.shopName}</label>
+                    </div>
+                  `;
+                });
+                
+                dialogContent += `
                     </div>
                   </div>
                 `;
-                
-                // 全局变量存储选中的店铺ID
-                window.selectedShopId = null;
                 
                 // 显示对话框
                 ElMessageBox({
@@ -210,6 +220,11 @@ function handleLogin() {
                         if (selectedShop) {
                           localStorage.setItem('shopId', selectedShop.id);
                           localStorage.setItem('shopName', selectedShop.shopName);
+                          // 同时存储为currentShop对象，供导航栏显示使用
+                          localStorage.setItem('currentShop', JSON.stringify({
+                            id: selectedShop.id,
+                            name: selectedShop.shopName
+                          }));
                           loading.value = false;
                           window.selectedShopId = null;
                           done();
