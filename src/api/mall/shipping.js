@@ -66,3 +66,73 @@ export function getAreaTree(maxLevel = 3) {
     params: { maxLevel }
   })
 }
+
+// 创建物流服务商
+export function createDeliveryProvider(data) {
+  const shopId = localStorage.getItem('shopId') || '';
+  return request({
+    url: `/mch/deliveryProvider/create`,
+    method: 'post',
+    data: {
+      ...data,
+      shopId: parseInt(shopId)
+    }
+  })
+}
+
+// 查询物流服务商列表
+export function queryDeliveryProviderList(params) {
+  const shopId = localStorage.getItem('shopId') || '';
+  return request({
+    url: `/mch/deliveryProvider/crud/query`,
+    method: 'get',
+    params: {
+      ...params,
+      shopId: parseInt(shopId)
+    }
+  })
+}
+
+// 获取物流服务商详情
+export function getDeliveryProviderDetail(id) {
+  return request({
+    url: `/mch/deliveryProvider/crud/detail`,
+    method: 'get',
+    params: { id }
+  })
+}
+
+// 更新物流服务商
+export function updateDeliveryProvider(data) {
+  const shopId = localStorage.getItem('shopId') || '';
+  return request({
+    url: `/mch/deliveryProvider/update`,
+    method: 'post',
+    data: {
+      ...data,
+      shopId: parseInt(shopId)
+    }
+  })
+}
+
+// 设置默认物流服务商
+export function setDefaultDeliveryProvider(id) {
+  const shopId = localStorage.getItem('shopId') || '';
+  return request({
+    url: `/mch/deliveryProvider/setDefault`,
+    method: 'post',
+    data: {
+      id,
+      shopId: parseInt(shopId)
+    }
+  })
+}
+
+// 删除物流服务商
+export function deleteDeliveryProvider(ids) {
+  return request({
+    url: `/mch/deliveryProvider/crud/delete`,
+    method: 'post',
+    data: Array.isArray(ids) ? ids : [ids]
+  })
+}

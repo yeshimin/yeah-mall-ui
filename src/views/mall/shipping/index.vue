@@ -109,9 +109,18 @@
         <el-table :data="logisticsList" style="width: 100%; margin-top: 20px;">
           <el-table-column prop="name" label="物流商名称" width="180"></el-table-column>
           <el-table-column prop="code" label="物流商编码" width="180"></el-table-column>
-          <el-table-column prop="contact" label="联系人" width="120"></el-table-column>
-          <el-table-column prop="phone" label="联系电话" width="150"></el-table-column>
-          <el-table-column prop="isDefault" label="是否默认" width="100">
+          <el-table-column prop="remark" label="备注" min-width="200"></el-table-column>
+          <el-table-column prop="createTime" label="创建时间" width="200">
+            <template #default="scope">
+              <span>{{ scope.row.createTime || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="updateTime" label="更新时间" width="200">
+            <template #default="scope">
+              <span>{{ scope.row.updateTime || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="isDefault" label="是否默认" width="120">
             <template #default="scope">
               <el-switch 
                 v-model="scope.row.isDefault" 
@@ -121,7 +130,7 @@
               ></el-switch>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column label="操作" width="180" fixed="right">
             <template #default="scope">
               <el-button size="small" @click="handleEditLogistics(scope.row)">编辑</el-button>
               <el-button size="small" type="danger" @click="handleDeleteLogistics(scope.row)">删除</el-button>
@@ -144,11 +153,8 @@
         <el-form-item label="物流商编码" prop="code" required>
           <el-input v-model="editingLogistics.code" placeholder="请输入物流商编码"></el-input>
         </el-form-item>
-        <el-form-item label="联系人" prop="contact">
-          <el-input v-model="editingLogistics.contact" placeholder="请输入联系人"></el-input>
-        </el-form-item>
-        <el-form-item label="联系电话" prop="phone">
-          <el-input v-model="editingLogistics.phone" placeholder="请输入联系电话"></el-input>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="editingLogistics.remark" placeholder="请输入备注信息"></el-input>
         </el-form-item>
         <el-form-item label="是否默认">
           <el-switch v-model="editingLogistics.isDefault" active-text="是" inactive-text="否"></el-switch>
@@ -171,10 +177,13 @@ import { Plus } from '@element-plus/icons-vue';
 import { 
   getShippingInfo, 
   saveShippingInfo, 
-  getLogisticsList, 
-  saveLogistics, 
-  deleteLogistics,
-  getAreaTree
+  getAreaTree,
+  createDeliveryProvider,
+  queryDeliveryProviderList,
+  getDeliveryProviderDetail,
+  updateDeliveryProvider,
+  setDefaultDeliveryProvider,
+  deleteDeliveryProvider
 } from '@/api/mall/shipping';
 
 // 加载状态
@@ -206,32 +215,7 @@ const cities = ref([]);
 const districts = ref([]);
 
 // 物流商列表
-const logisticsList = ref([
-  {
-    id: 1,
-    name: '顺丰速运',
-    code: 'SF',
-    contact: '顺丰客服',
-    phone: '95338',
-    isDefault: true
-  },
-  {
-    id: 2,
-    name: '中通快递',
-    code: 'ZT',
-    contact: '中通客服',
-    phone: '95311',
-    isDefault: false
-  },
-  {
-    id: 3,
-    name: '圆通快递',
-    code: 'YT',
-    contact: '圆通客服',
-    phone: '95554',
-    isDefault: false
-  }
-]);
+const logisticsList = ref([]);
 
 // 物流商编辑对话框
 const logisticsDialogVisible = ref(false);
@@ -239,12 +223,9 @@ const editingLogistics = reactive({
   id: null,
   name: '',
   code: '',
-  contact: '',
-  phone: '',
+  remark: '',
   isDefault: false
 });
-
-// 处理省份变化
 const handleProvinceChange = (provinceCode) => {
   // 保存当前的城市和区县代码
   const currentCityCode = shippingForm.cityCode;
@@ -384,8 +365,7 @@ const handleAddLogistics = () => {
     id: null,
     name: '',
     code: '',
-    contact: '',
-    phone: '',
+    remark: '',
     isDefault: false
   });
   logisticsDialogVisible.value = true;
@@ -395,6 +375,19 @@ const handleAddLogistics = () => {
 const handleEditLogistics = (row) => {
   Object.assign(editingLogistics, { ...row });
   logisticsDialogVisible.value = true;
+};
+
+// 获取物流商列表
+const getLogisticsProviderList = async () => {
+  try {
+    const response = await queryDeliveryProviderList({});
+    if (response.code === 0 && response.data) {
+      logisticsList.value = response.data.records || [];
+    }
+  } catch (error) {
+    console.error('获取物流商列表失败:', error);
+    ElMessage.error('获取物流商列表失败');
+  }
 };
 
 // 处理删除物流商
@@ -409,14 +402,13 @@ const handleDeleteLogistics = (row) => {
     }
   ).then(async () => {
     try {
-      // 实际项目中调用API删除
-      // await deleteLogistics(row.id);
-      
-      // 模拟删除
-      const index = logisticsList.value.findIndex(item => item.id === row.id);
-      if (index !== -1) {
-        logisticsList.value.splice(index, 1);
+      const response = await deleteDeliveryProvider(row.id);
+      if (response.code === 0) {
         ElMessage.success('删除成功');
+        // 重新获取物流商列表
+        await getLogisticsProviderList();
+      } else {
+        ElMessage.error(response.message || '删除失败');
       }
     } catch (error) {
       console.error('删除失败:', error);
@@ -432,33 +424,38 @@ const handleSaveLogistics = async () => {
     if (valid) {
       logisticsLoading.value = true;
       
-      if (editingLogistics.isDefault) {
-        // 确保只有一个默认物流商
-        logisticsList.value.forEach(item => {
-          item.isDefault = false;
-        });
-      }
+      // 构建保存数据
+      const saveData = {
+        name: editingLogistics.name,
+        code: editingLogistics.code,
+        remark: editingLogistics.remark
+      };
       
-      // 实际项目中调用API保存
-      // await saveLogistics(editingLogistics);
-      
-      // 模拟保存
+      let response;
       if (editingLogistics.id) {
         // 编辑
-        const index = logisticsList.value.findIndex(item => item.id === editingLogistics.id);
-        if (index !== -1) {
-          logisticsList.value[index] = { ...editingLogistics };
-        }
+        saveData.id = editingLogistics.id;
+        response = await updateDeliveryProvider(saveData);
       } else {
         // 添加
-        const newId = Math.max(...logisticsList.value.map(item => item.id), 0) + 1;
-        editingLogistics.id = newId;
-        logisticsList.value.push({ ...editingLogistics });
+        response = await createDeliveryProvider(saveData);
       }
       
-      logisticsDialogVisible.value = false;
-      logisticsLoading.value = false;
-      ElMessage.success('保存成功');
+      if (response.code === 0) {
+        // 如果设置为默认，调用设置默认API
+        if (editingLogistics.isDefault) {
+          await setDefaultDeliveryProvider(editingLogistics.id || response.data);
+        }
+        
+        logisticsDialogVisible.value = false;
+        logisticsLoading.value = false;
+        ElMessage.success('保存成功');
+        // 重新获取物流商列表
+        await getLogisticsProviderList();
+      } else {
+        logisticsLoading.value = false;
+        ElMessage.error(response.message || '保存失败');
+      }
     }
   } catch (error) {
     logisticsLoading.value = false;
@@ -468,13 +465,27 @@ const handleSaveLogistics = async () => {
 };
 
 // 处理默认物流商设置
-const handleDefaultLogistics = (row) => {
+const handleDefaultLogistics = async (row) => {
   if (row.isDefault) {
-    logisticsList.value.forEach(item => {
-      if (item.id !== row.id) {
-        item.isDefault = false;
+    try {
+      const response = await setDefaultDeliveryProvider(row.id);
+      if (response.code === 0) {
+        // 确保只有一个默认物流商
+        logisticsList.value.forEach(item => {
+          if (item.id !== row.id) {
+            item.isDefault = false;
+          }
+        });
+        ElMessage.success('设置默认物流商成功');
+      } else {
+        row.isDefault = false;
+        ElMessage.error(response.message || '设置失败');
       }
-    });
+    } catch (error) {
+      row.isDefault = false;
+      console.error('设置默认物流商失败:', error);
+      ElMessage.error('设置失败，请重试');
+    }
   }
 };
 
@@ -510,6 +521,9 @@ const initData = async () => {
     
     // 初始化城市和区县
     await initAreaSelections();
+    
+    // 获取物流商列表
+    await getLogisticsProviderList();
   } catch (error) {
     console.error('初始化数据失败:', error);
     ElMessage.error('加载数据失败');
