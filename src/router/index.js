@@ -136,6 +136,19 @@ export const constantRoutes = [
         meta: { title: '发货信息设置', icon: 'truck' }
       }
     ]
+  },
+  {
+    path: '/mall/order',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mall/order/index.vue'),
+        name: 'MallOrderManagement',
+        meta: { title: '订单管理', icon: 'shopping-cart' }
+      }
+    ]
   }
 ]
 
@@ -152,6 +165,20 @@ export const dynamicRoutes = [
         component: () => import('@/views/mall/shipping/index.vue'),
         name: 'MallShippingSettings',
         meta: { title: '发货信息设置', noCache: true }
+      }
+    ]
+  },
+  {
+    path: '/mall/order',
+    component: Layout,
+    permissions: ['mall:order:list'],
+    meta: { title: '订单管理', icon: 'shopping-cart' },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mall/order/index.vue'),
+        name: 'MallOrderManagement',
+        meta: { title: '订单管理', noCache: true }
       }
     ]
   },
