@@ -51,7 +51,7 @@
     </el-card>
     <!-- 订单列表 -->
     <div style="width: 100%; margin-bottom: 20px;">
-      <el-table :data="orderList" style="width: 100%;" fit border>
+      <el-table :data="orderList" style="width: 100%;" fit border @sort-change="handleSortChange">
         <el-table-column prop="orderNo" label="订单编号" min-width="180"></el-table-column>
         <el-table-column prop="totalAmount" label="订单金额" width="120">
           <template #default="scope">
@@ -65,10 +65,25 @@
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" min-width="180"></el-table-column>
-        <el-table-column prop="paySuccessTime" label="支付时间" min-width="180">
+        <el-table-column prop="createTime" label="创建时间" min-width="180" sortable="true"></el-table-column>
+        <el-table-column prop="paySuccessTime" label="支付时间" min-width="180" sortable="true">
           <template #default="scope">
             <span>{{ scope.row.paySuccessTime || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="收货人" width="100">
+          <template #default="scope">
+            <span>{{ scope.row.receiverName || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="收货电话" width="120">
+          <template #default="scope">
+            <span>{{ scope.row.receiverContact || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="收货地址" min-width="250">
+          <template #default="scope">
+            <span>{{ scope.row.receiverFullAddress || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
@@ -176,6 +191,12 @@ const pagination = reactive({
   total: 0
 });
 
+// 排序数据
+const sortConfig = reactive({
+  prop: 'createTime',
+  order: 'desc' // 默认降序
+});
+
 // 订单列表
 const orderList = ref([]);
 
@@ -209,17 +230,36 @@ const getLogisticsList = async () => {
   }
 };
 
+// 处理排序变化
+const handleSortChange = ({ prop, order }) => {
+  console.log('排序变化:', { prop, order });
+  if ((prop === 'createTime' || prop === 'paySuccessTime') && order) {
+    sortConfig.prop = prop;
+    sortConfig.order = order === 'ascending' ? 'asc' : 'desc';
+    console.log('更新排序配置:', sortConfig);
+    // 重新获取订单列表
+    getOrderList();
+  }
+};
+
 // 获取订单列表
 const getOrderList = async () => {
   try {
     loading.value = true;
     
+    // 构建排序条件
+    const sortField = sortConfig.prop;
+    const sortOrder = sortConfig.order;
+    const conditions_ = `${sortField}:sort:${sortOrder}`;
+    
     const params = {
       ...searchForm,
       current: pagination.current,
-      size: pagination.pageSize
+      size: pagination.pageSize,
+      conditions_ // 添加排序条件
     };
     
+    console.log('queryOrderList params:', params);
     const response = await queryOrderList(params);
     if (response.code === 0 && response.data) {
       orderList.value = response.data.records || [];
