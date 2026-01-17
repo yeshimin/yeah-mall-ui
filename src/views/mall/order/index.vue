@@ -86,10 +86,11 @@
             <span>{{ scope.row.receiverFullAddress || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="250" fixed="right">
           <template #default="scope">
             <el-button size="small" @click="handleOrderDetail(scope.row)">查看详情</el-button>
-            <el-button size="small" type="primary" v-if="scope.row.status === '2'" @click="handleDeliver(scope.row)">发货</el-button>
+            <el-button size="small" type="primary" v-if="scope.row.status === '2' && !scope.row.trackingNo" @click="handleDeliver(scope.row)">发货</el-button>
+            <el-button size="small" type="primary" v-else-if="(scope.row.status === '2' && scope.row.trackingNo) || scope.row.status === '3'" @click="handleDeliver(scope.row)">更新发货信息</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -204,29 +205,65 @@
           </div>
         </el-card>
 
-        <!-- 物流信息 -->
+        <!-- 快递信息 -->
         <el-card class="detail-card" shadow="hover" style="margin-top: 20px;">
           <template #header>
             <div class="card-header">
-              <h4>物流信息</h4>
+              <h4>快递信息</h4>
             </div>
           </template>
-          <div v-if="currentOrder.status >= '3'" class="logistics-info">
-            <div class="logistics-item">
-              <span class="label">物流单号：</span>
-              <span class="value">{{ currentOrder.logisticsNo || '-' }}</span>
+          <div v-if="currentOrder.status === '3' || currentOrder.status === 3" class="delivery-info">
+            <div class="delivery-item">
+              <span class="label">快递单号：</span>
+              <span class="value">{{ currentOrder.trackingNo || '-' }}</span>
             </div>
-            <div class="logistics-item">
-              <span class="label">物流商：</span>
-              <span class="value">{{ currentOrder.logisticsCompany || '-' }}</span>
+            <div class="delivery-item">
+              <span class="label">快递公司：</span>
+              <span class="value">
+                {{ (deliveryList.find(item => item.code === currentOrder.deliveryProviderCode?.toUpperCase())?.name || currentOrder.deliveryProviderCode || '-') }}
+              </span>
             </div>
-            <div class="logistics-item">
+            <div class="delivery-item">
               <span class="label">发货时间：</span>
-              <span class="value">{{ currentOrder.deliverTime || '-' }}</span>
+              <span class="value">{{ currentOrder.shipTime || '-' }}</span>
+            </div>
+            <div class="delivery-item">
+              <span class="label">查询状态：</span>
+              <el-tag :type="getQueryStatusType(currentOrder.deliveryQueryStatus)" size="small">
+                {{ getQueryStatusText(currentOrder.deliveryQueryStatus) }}
+              </el-tag>
+            </div>
+            <div class="delivery-item">
+              <span class="label">最后查询：</span>
+              <span class="value">{{ currentOrder.lastQueryTime || '未查询' }}</span>
+            </div>
+            <div class="delivery-item" style="margin-top: 10px;">
+              <el-button 
+                type="primary" 
+                size="small" 
+                @click="handleManualQueryDelivery"
+                :loading="queryDeliveryLoading"
+              >
+                手动查询快递
+              </el-button>
+            </div>
+            
+            <!-- 快递轨迹 -->
+            <div class="delivery-tracking" style="margin-top: 20px;">
+              <h5>快递轨迹</h5>
+              <div v-if="deliveryTracking.length > 0" class="tracking-list">
+                <div v-for="(track, index) in deliveryTracking" :key="index" class="tracking-item">
+                  <div class="tracking-time">{{ track.time }}</div>
+                  <div class="tracking-content">{{ track.content }}</div>
+                </div>
+              </div>
+              <div v-else class="no-tracking">
+                <span>暂无物流轨迹信息</span>
+              </div>
             </div>
           </div>
-          <div v-else class="no-logistics">
-            <span>暂无物流信息</span>
+          <div v-else class="no-delivery">
+            <span>暂无快递信息</span>
           </div>
         </el-card>
       </div>
@@ -238,24 +275,24 @@
     </el-dialog>
 
     <!-- 发货对话框 -->
-    <el-dialog v-model="deliverDialogVisible" title="订单发货" width="600px">
+    <el-dialog v-model="deliverDialogVisible" :title="currentDeliverAction === 'deliver' ? '订单发货' : '更新发货信息'" width="600px">
       <el-form ref="deliverFormRef" :model="deliverForm" label-width="100px">
-        <el-form-item label="订单编号" disabled>
-          <el-input v-model="deliverForm.orderNo"></el-input>
+        <el-form-item label="订单编号">
+          <el-input v-model="deliverForm.orderNo" disabled></el-input>
         </el-form-item>
-        <el-form-item label="物流商" prop="logisticsCompany" required>
-          <el-select v-model="deliverForm.logisticsCompany" placeholder="请选择物流商">
-            <el-option v-for="logistics in logisticsList" :key="logistics.code" :label="logistics.name" :value="logistics.code"></el-option>
+        <el-form-item label="快递公司" prop="deliveryCompany" required>
+          <el-select v-model="deliverForm.deliveryCompany" placeholder="请选择快递公司">
+            <el-option v-for="delivery in deliveryList" :key="delivery.code" :label="delivery.name" :value="delivery.code"></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="物流单号" prop="logisticsNo" required>
-          <el-input v-model="deliverForm.logisticsNo" placeholder="请输入物流单号"></el-input>
+        <el-form-item label="快递单号" prop="deliveryNo" required>
+          <el-input v-model="deliverForm.deliveryNo" placeholder="请输入快递单号"></el-input>
         </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="deliverDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmitDeliver" :loading="deliverLoading">确认发货</el-button>
+          <el-button type="primary" @click="handleSubmitDeliver" :loading="deliverLoading">{{ currentDeliverAction === 'deliver' ? '确认发货' : '更新发货信息' }}</el-button>
         </span>
       </template>
     </el-dialog>
@@ -265,7 +302,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { queryOrderList, getOrderDetail, deliverOrder } from '@/api/mall/order';
+import { queryOrderList, getOrderDetail, deliverOrder, updateShipInfo } from '@/api/mall/order';
 import { queryDeliveryProviderList } from '@/api/mall/shipping';
 import ImagePreview from '@/components/ImagePreview/index.vue';
 
@@ -330,19 +367,25 @@ const deliverFormRef = ref(null);
 const deliverForm = reactive({
   orderId: '',
   orderNo: '',
-  logisticsCompany: '',
-  logisticsNo: ''
+  deliveryCompany: '',
+  deliveryNo: ''
 });
+// 当前操作类型：'deliver' 发货，'update' 更新发货信息
+const currentDeliverAction = ref('deliver');
 
-// 物流商列表
-const logisticsList = ref([]);
+// 快递公司列表
+const deliveryList = ref([]);
+
+// 快递查询相关
+const queryDeliveryLoading = ref(false);
+const deliveryTracking = ref([]);
 
 // 获取物流商列表
 const getLogisticsList = async () => {
   try {
     const response = await queryDeliveryProviderList({});
     if (response.code === 0 && response.data) {
-      logisticsList.value = response.data.records || [];
+      deliveryList.value = response.data.records || [];
     }
   } catch (error) {
     console.error('获取物流商列表失败:', error);
@@ -459,8 +502,8 @@ const handleOrderDetail = async (row) => {
         receiverName: row.receiverName || '张三',
         receiverContact: row.receiverContact || '13800138000',
         receiverFullAddress: row.receiverFullAddress || '北京市朝阳区建国路88号',
-        logisticsNo: row.status >= '3' ? 'SF1234567890' : '',
-        logisticsCompany: row.status >= '3' ? '顺丰速运' : '',
+        deliveryNo: row.status >= '3' ? 'SF1234567890' : '',
+        deliveryCompany: row.status >= '3' ? '顺丰速运' : '',
         deliverTime: row.status >= '3' ? '2026-01-16 15:00:00' : ''
       };
       
@@ -532,11 +575,17 @@ const handleOrderDetail = async (row) => {
 
 // 发货
 const handleDeliver = (row) => {
+  // 设置当前操作类型
+  currentDeliverAction.value = row.trackingNo || row.status === '3' ? 'update' : 'deliver';
+  
+  // 使用订单的deliveryProviderCode作为快递公司code，转换为大写以便忽略大小写匹配
+  const deliveryProviderCode = row.deliveryProviderCode || '';
+  
   Object.assign(deliverForm, {
     orderId: row.id,
     orderNo: row.orderNo,
-    logisticsCompany: '',
-    logisticsNo: ''
+    deliveryCompany: deliveryProviderCode.toUpperCase(),
+    deliveryNo: row.trackingNo || ''
   });
   deliverDialogVisible.value = true;
 };
@@ -548,27 +597,33 @@ const handleSubmitDeliver = async () => {
     if (valid) {
       deliverLoading.value = true;
       
-      const response = await deliverOrder({
+      // 查找当前订单
+      const currentRow = orderList.value.find(item => item.id === deliverForm.orderId);
+      // 根据订单是否有trackingNo决定调用哪个接口
+      const apiMethod = currentRow?.trackingNo ? updateShipInfo : deliverOrder;
+      const successMessage = currentRow?.trackingNo ? '更新发货信息成功' : '发货成功';
+      
+      const response = await apiMethod({
         orderId: deliverForm.orderId,
-        logisticsCompany: deliverForm.logisticsCompany,
-        logisticsNo: deliverForm.logisticsNo
+        deliveryProviderCode: deliverForm.deliveryCompany,
+        trackingNo: deliverForm.deliveryNo
       });
       
       if (response.code === 0) {
         deliverDialogVisible.value = false;
         deliverLoading.value = false;
-        ElMessage.success('发货成功');
+        ElMessage.success(successMessage);
         // 重新获取订单列表
         getOrderList();
       } else {
         deliverLoading.value = false;
-        ElMessage.error(response.message || '发货失败');
+        ElMessage.error(response.message || '操作失败');
       }
     }
   } catch (error) {
     deliverLoading.value = false;
-    console.error('发货失败:', error);
-    ElMessage.error('发货失败，请重试');
+    console.error('操作失败:', error);
+    ElMessage.error('操作失败，请重试');
   }
 };
 
@@ -596,6 +651,71 @@ const getStatusClass = (status) => {
     '5': 'status-canceled'
   };
   return statusClassMap[status] || '';
+};
+
+// 获取快递查询状态文本
+const getQueryStatusText = (status) => {
+  const statusMap = {
+    '0': '未查询',
+    '1': '查询中',
+    '2': '查询成功',
+    '3': '查询失败',
+    '4': '快递异常'
+  };
+  return statusMap[status] || statusMap['0'];
+};
+
+// 获取快递查询状态标签类型
+const getQueryStatusType = (status) => {
+  const typeMap = {
+    '0': 'info',
+    '1': 'warning',
+    '2': 'success',
+    '3': 'danger',
+    '4': 'danger'
+  };
+  return typeMap[status] || typeMap['0'];
+};
+
+// 手动查询快递
+const handleManualQueryDelivery = async () => {
+  try {
+    queryDeliveryLoading.value = true;
+    // TODO: 调用快递查询API
+    // 模拟API调用
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // 模拟快递轨迹数据
+    deliveryTracking.value = [
+      {
+        time: '2026-01-17 15:30:00',
+        content: '【北京市】快递已到达【北京朝阳区营业部】'
+      },
+      {
+        time: '2026-01-17 14:20:00',
+        content: '【北京市】快递已离开【北京转运中心】，正在发往【北京朝阳区营业部】'
+      },
+      {
+        time: '2026-01-17 12:10:00',
+        content: '【北京市】快递已到达【北京转运中心】'
+      },
+      {
+        time: '2026-01-17 10:00:00',
+        content: '【北京市】商家已发货，快递正在揽收中'
+      }
+    ];
+    
+    // 更新订单信息
+    currentOrder.value.deliveryQueryStatus = '2';
+    currentOrder.value.lastQueryTime = new Date().toLocaleString();
+    
+    ElMessage.success('快递查询成功');
+  } catch (error) {
+    console.error('快递查询失败:', error);
+    ElMessage.error('快递查询失败，请稍后重试');
+  } finally {
+    queryDeliveryLoading.value = false;
+  }
 };
 
 // 初始化
@@ -718,23 +838,91 @@ onMounted(() => {
 }
 
 /* 物流信息样式 */
-.logistics-info {
+.delivery-info {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.logistics-item {
+.delivery-item {
   display: flex;
   align-items: center;
 }
 
-.logistics-item .label {
+.delivery-item .label {
   width: 80px;
   color: #606266;
 }
 
-.no-logistics {
+.no-delivery {
+  color: #909399;
+  text-align: center;
+  padding: 20px 0;
+}
+
+/* 快递轨迹样式 */
+.delivery-tracking {
+  margin-top: 20px;
+}
+
+.delivery-tracking h5 {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.tracking-list {
+  padding-left: 20px;
+  position: relative;
+}
+
+.tracking-list::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #e4e7ed;
+}
+
+.tracking-item {
+  position: relative;
+  padding-bottom: 20px;
+  padding-left: 15px;
+}
+
+.tracking-item::before {
+  content: '';
+  position: absolute;
+  left: -25px;
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #fff;
+  border: 2px solid #409eff;
+  z-index: 1;
+}
+
+.tracking-item:last-child::before {
+  background-color: #409eff;
+}
+
+.tracking-time {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 4px;
+}
+
+.tracking-content {
+  font-size: 13px;
+  color: #606266;
+  line-height: 1.5;
+}
+
+.no-tracking {
   color: #909399;
   text-align: center;
   padding: 20px 0;

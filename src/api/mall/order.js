@@ -25,7 +25,16 @@ export function getOrderDetail(id) {
 // 订单发货
 export function deliverOrder(data) {
   return request({
-    url: `/mch/order/deliver`,
+    url: `/mch/order/ship`,
+    method: 'post',
+    data
+  })
+}
+
+// 更新发货信息
+export function updateShipInfo(data) {
+  return request({
+    url: `/mch/order/updateShipInfo`,
     method: 'post',
     data
   })
