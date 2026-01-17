@@ -177,8 +177,8 @@ function handleLogin() {
                 redirectToMainPage();
               } else {
                 // 店铺数量大于1，弹出选择对话框
-                // 全局变量存储选中的店铺ID
-                window.selectedShopId = null;
+                // 全局变量存储选中的店铺ID，默认选择第一个店铺
+                window.selectedShopId = shopList[0].id;
                 
                 // 创建对话框内容
                 let dialogContent = `
@@ -188,12 +188,14 @@ function handleLogin() {
                 `;
                 
                 // 为每个店铺生成HTML
-                shopList.forEach(shop => {
+                shopList.forEach((shop, index) => {
+                  // 默认选中第一个店铺
+                  const isChecked = index === 0 ? 'checked' : '';
                   dialogContent += `
                     <div style="margin-bottom: 10px; padding: 8px; border-radius: 4px; cursor: pointer;" 
                          onclick="window.selectedShopId = '${shop.id}'; document.querySelectorAll('input[name=shop]').forEach(r => r.checked = r.value == '${shop.id}')">
                       <input type="radio" name="shop" value="${shop.id}" style="margin-right: 8px;" 
-                             onchange="window.selectedShopId = this.value">
+                             onchange="window.selectedShopId = this.value" ${isChecked}>
                       <label style="cursor: pointer;">${shop.shopName}</label>
                     </div>
                   `;
