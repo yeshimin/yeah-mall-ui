@@ -40,6 +40,15 @@ export function updateShipInfo(data) {
   })
 }
 
+// 查询快递轨迹
+export function queryTracking(orderId) {
+  return request({
+    url: `/mch/order/queryTracking`,
+    method: 'get',
+    params: { orderId }
+  })
+}
+
 // 订单备注
 export function remarkOrder(data) {
   return request({

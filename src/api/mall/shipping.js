@@ -136,3 +136,15 @@ export function deleteDeliveryProvider(ids) {
     data: Array.isArray(ids) ? ids : [ids]
   })
 }
+
+// 同步快递公司
+export function syncExpCompany() {
+  const shopId = localStorage.getItem('shopId') || '';
+  return request({
+    url: `/mch/deliveryProvider/syncExpCompany`,
+    method: 'post',
+    data: {
+      shopId: parseInt(shopId)
+    }
+  })
+}

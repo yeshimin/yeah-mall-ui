@@ -101,10 +101,34 @@
       </template>
       
       <div class="logistics-section">
-        <el-button type="primary" plain class="add-logistics-btn" @click="handleAddLogistics">
-          <el-icon><Plus /></el-icon>
-          添加物流商
-        </el-button>
+        <div class="logistics-search">
+          <el-input
+            v-model="logisticsSearch.name"
+            placeholder="物流商名称"
+            clearable
+            class="search-input"
+            @keyup.enter="handleLogisticsSearch"
+          ></el-input>
+          <el-input
+            v-model="logisticsSearch.code"
+            placeholder="物流商编码"
+            clearable
+            class="search-input"
+            @keyup.enter="handleLogisticsSearch"
+          ></el-input>
+          <el-button type="primary" @click="handleLogisticsSearch">搜索</el-button>
+          <el-button @click="handleLogisticsReset">重置</el-button>
+        </div>
+        
+        <div class="logistics-buttons">
+          <el-button type="primary" plain class="add-logistics-btn" @click="handleAddLogistics">
+            <el-icon><Plus /></el-icon>
+            添加物流商
+          </el-button>
+          <el-button type="success" plain class="sync-logistics-btn" @click="handleSyncExpCompany">
+            同步快递公司
+          </el-button>
+        </div>
         
         <el-table :data="logisticsList" style="width: 100%; margin-top: 20px;">
           <el-table-column prop="name" label="物流商名称" width="180"></el-table-column>
@@ -137,6 +161,19 @@
             </template>
           </el-table-column>
         </el-table>
+        
+        <!-- 分页组件 -->
+        <div class="pagination-container" style="margin-top: 20px; text-align: right;">
+          <el-pagination
+            v-model:current-page="logisticsPagination.current"
+            v-model:page-size="logisticsPagination.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="logisticsPagination.total"
+            @size-change="handleLogisticsSizeChange"
+            @current-change="handleLogisticsCurrentChange"
+          />
+        </div>
       </div>
     </el-card>
 
@@ -183,7 +220,8 @@ import {
   getDeliveryProviderDetail,
   updateDeliveryProvider,
   setDefaultDeliveryProvider,
-  deleteDeliveryProvider
+  deleteDeliveryProvider,
+  syncExpCompany
 } from '@/api/mall/shipping';
 
 // 加载状态
@@ -216,6 +254,17 @@ const districts = ref([]);
 
 // 物流商列表
 const logisticsList = ref([]);
+const logisticsPagination = reactive({
+  current: 1,
+  pageSize: 10,
+  total: 0
+});
+
+// 物流商搜索条件
+const logisticsSearch = reactive({
+  name: '',
+  code: ''
+});
 
 // 物流商编辑对话框
 const logisticsDialogVisible = ref(false);
@@ -380,14 +429,48 @@ const handleEditLogistics = (row) => {
 // 获取物流商列表
 const getLogisticsProviderList = async () => {
   try {
-    const response = await queryDeliveryProviderList({});
+    // 构建搜索条件
+    const conditions = [];
+    if (logisticsSearch.name) {
+      conditions.push(`name:like:${logisticsSearch.name}`);
+    }
+    if (logisticsSearch.code) {
+      conditions.push(`code:like:${logisticsSearch.code}`);
+    }
+    // 添加默认排序
+    conditions.push('id:sort:desc');
+    
+    // 添加分页参数和搜索条件
+    const response = await queryDeliveryProviderList({
+      current: logisticsPagination.current,
+      size: logisticsPagination.pageSize,
+      conditions_: conditions.join(';')
+    });
     if (response.code === 0 && response.data) {
       logisticsList.value = response.data.records || [];
+      logisticsPagination.total = response.data.total || 0;
     }
   } catch (error) {
     console.error('获取物流商列表失败:', error);
     ElMessage.error('获取物流商列表失败');
   }
+};
+
+// 处理物流商搜索
+const handleLogisticsSearch = () => {
+  // 重置到第一页
+  logisticsPagination.current = 1;
+  getLogisticsProviderList();
+};
+
+// 处理物流商搜索重置
+const handleLogisticsReset = () => {
+  // 清空搜索条件
+  logisticsSearch.name = '';
+  logisticsSearch.code = '';
+  // 重置到第一页
+  logisticsPagination.current = 1;
+  getLogisticsProviderList();
 };
 
 // 处理删除物流商
@@ -487,6 +570,59 @@ const handleDefaultLogistics = async (row) => {
       ElMessage.error('设置失败，请重试');
     }
   }
+};
+
+// 处理同步快递公司
+const handleSyncExpCompany = async () => {
+  try {
+    // 显示确认对话框
+    await ElMessageBox.confirm(
+      '确定要同步快递公司吗？这将从系统同步最新的快递公司列表。',
+      '同步确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'info'
+      }
+    );
+    
+    // 设置加载状态
+    logisticsLoading.value = true;
+    
+    // 调用同步接口
+    const response = await syncExpCompany();
+    
+    if (response.code === 0) {
+      ElMessage.success('同步快递公司成功');
+      // 重置分页到第一页，重新获取物流商列表
+      logisticsPagination.current = 1;
+      await getLogisticsProviderList();
+    } else {
+      ElMessage.error(response.message || '同步失败');
+    }
+  } catch (error) {
+    if (error === 'cancel') {
+      // 用户取消操作
+      return;
+    }
+    console.error('同步快递公司失败:', error);
+    ElMessage.error('同步失败，请重试');
+  } finally {
+    // 关闭加载状态
+    logisticsLoading.value = false;
+  }
+};
+
+// 处理物流商列表分页大小变化
+const handleLogisticsSizeChange = (size) => {
+  logisticsPagination.pageSize = size;
+  getLogisticsProviderList();
+};
+
+// 处理物流商列表当前页码变化
+const handleLogisticsCurrentChange = (current) => {
+  logisticsPagination.current = current;
+  getLogisticsProviderList();
 };
 
 // 初始化数据
@@ -602,8 +738,23 @@ export default {
   margin-top: 10px;
 }
 
-.add-logistics-btn {
+.add-logistics-btn, .sync-logistics-btn {
+  margin-right: 10px;
+}
+
+.logistics-search {
   margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logistics-buttons {
+  margin-bottom: 20px;
+}
+
+.search-input {
+  width: 200px;
 }
 
 .dialog-footer {
