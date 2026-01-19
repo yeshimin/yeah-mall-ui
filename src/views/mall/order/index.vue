@@ -282,7 +282,7 @@
           <el-input v-model="deliverForm.orderNo" disabled></el-input>
         </el-form-item>
         <el-form-item label="快递公司" prop="deliveryCompany" required>
-          <el-select v-model="deliverForm.deliveryCompany" placeholder="请选择快递公司" filterable>
+          <el-select v-model="deliverForm.deliveryCompany" placeholder="请选择快递公司" filterable :filter-method="handleDeliveryFilter">
             <el-option v-for="delivery in deliveryList" :key="delivery.code" :label="delivery.name" :value="delivery.code"></el-option>
           </el-select>
         </el-form-item>
@@ -382,9 +382,25 @@ const queryDeliveryLoading = ref(false);
 const deliveryTracking = ref([]);
 
 // 获取物流商列表
-const getLogisticsList = async () => {
+const getLogisticsList = async (searchKeyword = '') => {
   try {
-    const response = await queryDeliveryProviderList({});
+    // 构建搜索条件
+    const conditions = [];
+    
+    // 添加名称模糊查询
+    if (searchKeyword) {
+      conditions.push(`name:like:${searchKeyword}`);
+    }
+    
+    // 添加排序条件：主流的优先排序
+    conditions.push('isPopular:sort:desc');
+    // 添加默认排序
+    conditions.push('updateTime:sort:desc');
+    
+    const response = await queryDeliveryProviderList({
+      size: 100, // 一次加载100条
+      conditions_: conditions.join(';')
+    });
     if (response.code === 0 && response.data) {
       // 保持快递公司的code默认格式，不转换为大写
       deliveryList.value = (response.data.records || []).map(delivery => ({
@@ -394,6 +410,22 @@ const getLogisticsList = async () => {
   } catch (error) {
     console.error('获取物流商列表失败:', error);
   }
+};
+
+// 防抖定时器
+let deliverySearchTimer = null;
+
+// 处理快递公司搜索（带防抖）
+const handleDeliveryFilter = (value) => {
+  // 清除之前的定时器
+  if (deliverySearchTimer) {
+    clearTimeout(deliverySearchTimer);
+  }
+  
+  // 设置新的定时器，300ms后执行搜索
+  deliverySearchTimer = setTimeout(() => {
+    getLogisticsList(value);
+  }, 300);
 };
 
 // 处理排序变化
@@ -578,7 +610,7 @@ const handleOrderDetail = async (row) => {
 };
 
 // 发货
-const handleDeliver = (row) => {
+const handleDeliver = async (row) => {
   // 设置当前操作类型
   currentDeliverAction.value = row.trackingNo || row.status === '3' ? 'update' : 'deliver';
   
@@ -591,6 +623,9 @@ const handleDeliver = (row) => {
     deliveryCompany: deliveryProviderCode,
     deliveryNo: row.trackingNo || ''
   });
+  
+  // 在打开对话框前获取物流商列表
+  await getLogisticsList();
   deliverDialogVisible.value = true;
 };
 
@@ -751,10 +786,8 @@ const handleManualQueryDelivery = async () => {
   }
 };
 
-// 生命周期
+// // 生命周期
 onMounted(async () => {
-  // 获取物流商列表
-  await getLogisticsList();
   // 获取订单列表
   await getOrderList();
 });

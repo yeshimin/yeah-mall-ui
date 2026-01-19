@@ -116,14 +116,29 @@ export function updateDeliveryProvider(data) {
 }
 
 // 设置默认物流服务商
-export function setDefaultDeliveryProvider(id) {
+export function setDefaultDeliveryProvider(id, isDefault = true) {
   const shopId = localStorage.getItem('shopId') || '';
   return request({
     url: `/mch/deliveryProvider/setDefault`,
     method: 'post',
     data: {
       id,
-      shopId: parseInt(shopId)
+      shopId: parseInt(shopId),
+      isDefault
+    }
+  })
+}
+
+// 设置是否主流物流服务商
+export function setPopularDeliveryProvider(id, isPopular = true) {
+  const shopId = localStorage.getItem('shopId') || '';
+  return request({
+    url: `/mch/deliveryProvider/setPopular`,
+    method: 'post',
+    data: {
+      id,
+      shopId: parseInt(shopId),
+      isPopular
     }
   })
 }

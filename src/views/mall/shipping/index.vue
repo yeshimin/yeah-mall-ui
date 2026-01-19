@@ -116,6 +116,17 @@
             class="search-input"
             @keyup.enter="handleLogisticsSearch"
           ></el-input>
+          <el-select
+            v-model="logisticsSearch.isPopular"
+            placeholder="是否主流"
+            clearable
+            class="search-input"
+            @change="handleLogisticsSearch"
+          >
+            <el-option label="全部" :value="''"></el-option>
+            <el-option label="是" :value="true"></el-option>
+            <el-option label="否" :value="false"></el-option>
+          </el-select>
           <el-button type="primary" @click="handleLogisticsSearch">搜索</el-button>
           <el-button @click="handleLogisticsReset">重置</el-button>
         </div>
@@ -134,6 +145,16 @@
           <el-table-column prop="name" label="物流商名称" width="180"></el-table-column>
           <el-table-column prop="code" label="物流商编码" width="180"></el-table-column>
           <el-table-column prop="remark" label="备注" min-width="200"></el-table-column>
+          <el-table-column prop="isPopular" label="是否主流" width="120">
+            <template #default="scope">
+              <el-switch 
+                v-model="scope.row.isPopular" 
+                active-text="是" 
+                inactive-text="否"
+                @change="handlePopularLogistics(scope.row)"
+              ></el-switch>
+            </template>
+          </el-table-column>
           <el-table-column prop="createTime" label="创建时间" width="200">
             <template #default="scope">
               <span>{{ scope.row.createTime || '-' }}</span>
@@ -193,9 +214,6 @@
         <el-form-item label="备注" prop="remark">
           <el-input v-model="editingLogistics.remark" placeholder="请输入备注信息"></el-input>
         </el-form-item>
-        <el-form-item label="是否默认">
-          <el-switch v-model="editingLogistics.isDefault" active-text="是" inactive-text="否"></el-switch>
-        </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -220,6 +238,7 @@ import {
   getDeliveryProviderDetail,
   updateDeliveryProvider,
   setDefaultDeliveryProvider,
+  setPopularDeliveryProvider,
   deleteDeliveryProvider,
   syncExpCompany
 } from '@/api/mall/shipping';
@@ -263,7 +282,8 @@ const logisticsPagination = reactive({
 // 物流商搜索条件
 const logisticsSearch = reactive({
   name: '',
-  code: ''
+  code: '',
+  isPopular: '' // ''表示全部，true表示主流，false表示非主流
 });
 
 // 物流商编辑对话框
@@ -273,6 +293,7 @@ const editingLogistics = reactive({
   name: '',
   code: '',
   remark: '',
+  isPopular: false,
   isDefault: false
 });
 const handleProvinceChange = (provinceCode) => {
@@ -415,6 +436,7 @@ const handleAddLogistics = () => {
     name: '',
     code: '',
     remark: '',
+    isPopular: false,
     isDefault: false
   });
   logisticsDialogVisible.value = true;
@@ -437,15 +459,25 @@ const getLogisticsProviderList = async () => {
     if (logisticsSearch.code) {
       conditions.push(`code:like:${logisticsSearch.code}`);
     }
+    // 添加排序条件：主流的优先排序
+    conditions.push('isPopular:sort:desc');
     // 添加默认排序
-    conditions.push('id:sort:desc');
+    conditions.push('updateTime:sort:desc');
     
-    // 添加分页参数和搜索条件
-    const response = await queryDeliveryProviderList({
+    // 构建查询参数
+    const params = {
       current: logisticsPagination.current,
       size: logisticsPagination.pageSize,
       conditions_: conditions.join(';')
-    });
+    };
+    
+    // 添加是否主流的筛选参数（直接作为独立参数，不使用conditions_）
+    if (logisticsSearch.isPopular !== '') {
+      params.isPopular = logisticsSearch.isPopular;
+    }
+    
+    // 添加分页参数和搜索条件
+    const response = await queryDeliveryProviderList(params);
     if (response.code === 0 && response.data) {
       logisticsList.value = response.data.records || [];
       logisticsPagination.total = response.data.total || 0;
@@ -468,6 +500,7 @@ const handleLogisticsReset = () => {
   // 清空搜索条件
   logisticsSearch.name = '';
   logisticsSearch.code = '';
+  logisticsSearch.isPopular = '';
   // 重置到第一页
   logisticsPagination.current = 1;
   getLogisticsProviderList();
@@ -507,7 +540,7 @@ const handleSaveLogistics = async () => {
     if (valid) {
       logisticsLoading.value = true;
       
-      // 构建保存数据
+      // 构建保存数据（仅包含表单中设置的字段）
       const saveData = {
         name: editingLogistics.name,
         code: editingLogistics.code,
@@ -525,11 +558,6 @@ const handleSaveLogistics = async () => {
       }
       
       if (response.code === 0) {
-        // 如果设置为默认，调用设置默认API
-        if (editingLogistics.isDefault) {
-          await setDefaultDeliveryProvider(editingLogistics.id || response.data);
-        }
-        
         logisticsDialogVisible.value = false;
         logisticsLoading.value = false;
         ElMessage.success('保存成功');
@@ -547,28 +575,50 @@ const handleSaveLogistics = async () => {
   }
 };
 
+// 处理是否主流物流商设置
+const handlePopularLogistics = async (row) => {
+  try {
+    // 调用设置是否主流API
+    const response = await setPopularDeliveryProvider(row.id, row.isPopular);
+    if (response.code === 0) {
+      ElMessage.success(row.isPopular ? '设置主流物流商成功' : '取消主流物流商成功');
+    } else {
+      // 更新失败，恢复原来的状态
+      row.isPopular = !row.isPopular;
+      ElMessage.error(response.message || '设置失败');
+    }
+  } catch (error) {
+    // 异常处理，恢复原来的状态
+    row.isPopular = !row.isPopular;
+    console.error('设置是否主流失败:', error);
+    ElMessage.error('设置失败，请重试');
+  }
+};
+
 // 处理默认物流商设置
 const handleDefaultLogistics = async (row) => {
-  if (row.isDefault) {
-    try {
-      const response = await setDefaultDeliveryProvider(row.id);
-      if (response.code === 0) {
-        // 确保只有一个默认物流商
+  try {
+    const response = await setDefaultDeliveryProvider(row.id, row.isDefault);
+    if (response.code === 0) {
+      // 确保只有一个默认物流商
+      if (row.isDefault) {
         logisticsList.value.forEach(item => {
           if (item.id !== row.id) {
             item.isDefault = false;
           }
         });
-        ElMessage.success('设置默认物流商成功');
-      } else {
-        row.isDefault = false;
-        ElMessage.error(response.message || '设置失败');
       }
-    } catch (error) {
-      row.isDefault = false;
-      console.error('设置默认物流商失败:', error);
-      ElMessage.error('设置失败，请重试');
+      ElMessage.success(row.isDefault ? '设置默认物流商成功' : '取消默认物流商成功');
+    } else {
+      // 更新失败，恢复原来的状态
+      row.isDefault = !row.isDefault;
+      ElMessage.error(response.message || '设置失败');
     }
+  } catch (error) {
+    // 异常处理，恢复原来的状态
+    row.isDefault = !row.isDefault;
+    console.error('设置默认物流商失败:', error);
+    ElMessage.error('设置失败，请重试');
   }
 };
 
