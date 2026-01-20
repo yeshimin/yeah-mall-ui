@@ -77,7 +77,7 @@ export function changeUserStatus(userId, status) {
 // 查询用户个人信息
 export function getUserProfile() {
   return request({
-    url: '/system/user/profile',
+    url: '/admin/user/profile',
     method: 'get'
   })
 }
@@ -85,7 +85,7 @@ export function getUserProfile() {
 // 修改用户个人信息
 export function updateUserProfile(data) {
   return request({
-    url: '/system/user/profile',
+    url: '/admin/user/profile',
     method: 'put',
     data: data
   })
@@ -98,7 +98,7 @@ export function updateUserPwd(oldPassword, newPassword) {
     newPassword
   }
   return request({
-    url: '/system/user/profile/updatePwd',
+    url: '/admin/user/profile/updatePwd',
     method: 'put',
     data: data
   })
@@ -107,7 +107,7 @@ export function updateUserPwd(oldPassword, newPassword) {
 // 用户头像上传
 export function uploadAvatar(data) {
   return request({
-    url: '/system/user/profile/avatar',
+    url: '/admin/user/profile/avatar',
     method: 'post',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     data: data
@@ -117,7 +117,7 @@ export function uploadAvatar(data) {
 // 查询授权角色
 export function getAuthRole(userId) {
   return request({
-    url: '/system/user/authRole/' + userId,
+    url: '/admin/user/authRole/' + userId,
     method: 'get'
   })
 }
@@ -125,7 +125,7 @@ export function getAuthRole(userId) {
 // 保存授权角色
 export function updateAuthRole(data) {
   return request({
-    url: '/system/user/authRole',
+    url: '/admin/user/authRole',
     method: 'put',
     params: data
   })
@@ -134,7 +134,7 @@ export function updateAuthRole(data) {
 // 查询部门下拉树结构
 export function deptTreeSelect() {
   return request({
-    url: '/sysOrg/tree',
+    url: '/admin/sysOrg/tree',
     method: 'get'
   })
 }
