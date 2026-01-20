@@ -4,7 +4,7 @@ import { de } from 'element-plus/es/locales.mjs'
 // 查询部门列表
 export function listDept(query) {
   return request({
-    url: '/system/dept/list',
+    url: '/admin/dept/list',
     method: 'get',
     params: query
   })
@@ -22,7 +22,7 @@ export function orgTree(query) {
 // 查询部门列表（排除节点）
 export function listDeptExcludeChild(deptId) {
   return request({
-    url: '/system/dept/list/exclude/' + deptId,
+    url: '/admin/dept/list/exclude/' + deptId,
     method: 'get'
   })
 }
