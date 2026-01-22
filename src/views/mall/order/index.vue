@@ -253,7 +253,7 @@
             <div class="delivery-tracking" style="margin-top: 20px;">
               <h5>快递轨迹</h5>
               <div v-if="deliveryTracking.length > 0" class="tracking-list">
-                <div v-for="(track, index) in deliveryTracking" :key="index" class="tracking-item">
+                <div v-for="(track, index) in deliveryTracking" :key="index" :class="['tracking-item', { 'current-node': index === 0 }]">
                   <div class="tracking-time">{{ track.time }}</div>
                   <div class="tracking-content">{{ track.content }}</div>
                 </div>
@@ -524,6 +524,21 @@ const handleOrderDetail = async (row) => {
         // 解析新的API返回格式
         orderData = response.data.order;
         itemsData = response.data.shopProducts || [];
+        
+        // 直接使用接口返回的deliveryTracking字段
+        if (response.data.deliveryTracking && response.data.deliveryTracking.result) {
+          // 转换轨迹数据格式
+          deliveryTracking.value = (response.data.deliveryTracking.result.list || []).map(track => ({
+            time: track.datetime || '',
+            content: track.remark || ''
+          })).reverse(); // 倒序排列，最新的轨迹在最前面
+          
+          // 更新订单的快递状态信息
+          if (orderData) {
+            orderData.deliveryQueryStatus = '2'; // 查询成功
+            orderData.trackingStatusDetail = response.data.deliveryTracking.result.status_detail || 'UNKNOWN';
+          }
+        }
       }
     } catch (apiError) {
       console.log('API调用失败，使用mock数据:', apiError);
@@ -753,20 +768,30 @@ const handleManualQueryDelivery = async () => {
   try {
     queryDeliveryLoading.value = true;
     // 调用快递查询接口
-    const response = await queryTracking(currentOrder.value.id);
-    if (response.code === 0 && response.data && response.data.result) {
-      // 更新订单的快递状态信息
-      if (currentOrder.value) {
-        currentOrder.value.deliveryQueryStatus = '2'; // 查询成功
-        currentOrder.value.trackingStatusDetail = response.data.result.status_detail || 'UNKNOWN';
+    const response = await queryTracking(currentOrder.value.orderNo);
+    if (response.code === 0) {
+      // 直接使用接口返回的deliveryTracking数据或result数据
+      const trackingData = response.data.deliveryTracking || response.data;
+      if (trackingData && trackingData.result) {
+        // 更新订单的快递状态信息
+        if (currentOrder.value) {
+          currentOrder.value.deliveryQueryStatus = '2'; // 查询成功
+          currentOrder.value.trackingStatusDetail = trackingData.result.status_detail || 'UNKNOWN';
+        }
+        
+        // 转换轨迹数据格式
+        deliveryTracking.value = (trackingData.result.list || []).map(track => ({
+          time: track.datetime || '',
+          content: track.remark || ''
+        })).reverse(); // 倒序排列，最新的轨迹在最前面
+        ElMessage.success('快递查询成功');
+      } else {
+        // 查询失败时更新订单状态
+        if (currentOrder.value) {
+          currentOrder.value.deliveryQueryStatus = '3'; // 查询失败
+        }
+        ElMessage.error(response.message || '快递查询失败');
       }
-      
-      // 转换轨迹数据格式，适应新的API响应格式
-      deliveryTracking.value = (response.data.result.list || []).map(track => ({
-        time: track.datetime || '',
-        content: track.remark || ''
-      })).reverse(); // 倒序排列，最新的轨迹在最前面
-      ElMessage.success('快递查询成功');
     } else {
       // 查询失败时更新订单状态
       if (currentOrder.value) {
@@ -897,9 +922,19 @@ onMounted(async () => {
   }
   &:last-child {
     margin-bottom: 0;
+  }
+  &.current-node {
     &:before {
       background-color: #409eff;
       box-shadow: 0 0 0 2px #c6e2ff;
+    }
+    .tracking-time {
+      color: #409eff;
+      font-weight: bold;
+    }
+    .tracking-content {
+      color: #409eff;
+      font-weight: bold;
     }
   }
 }
