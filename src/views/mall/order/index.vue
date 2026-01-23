@@ -13,12 +13,31 @@
         </el-form-item>
         <el-form-item label="订单状态">
           <el-select v-model="searchForm.status" placeholder="请选择订单状态" clearable style="width: 200px;">
-            <el-option label="待审核" value="0"></el-option>
             <el-option label="待付款" value="1"></el-option>
             <el-option label="待发货" value="2"></el-option>
-            <el-option label="已发货" value="3"></el-option>
-            <el-option label="已完成" value="4"></el-option>
-            <el-option label="已取消" value="5"></el-option>
+            <el-option label="待收货" value="3"></el-option>
+            <el-option label="交易成功" value="4"></el-option>
+            <el-option label="交易关闭" value="5"></el-option>
+            <el-option label="退款" value="6"></el-option>
+            <el-option label="售后" value="7"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="退款状态">
+          <el-select v-model="searchForm.refundStatus" placeholder="请选择退款状态" clearable style="width: 200px;">
+            <el-option label="无" value="0"></el-option>
+            <el-option label="申请中" value="1"></el-option>
+            <el-option label="处理中" value="2"></el-option>
+            <el-option label="退款成功" value="3"></el-option>
+            <el-option label="已拒绝" value="4"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="售后状态">
+          <el-select v-model="searchForm.afterSaleStatus" placeholder="请选择售后状态" clearable style="width: 200px;">
+            <el-option label="无" value="0"></el-option>
+            <el-option label="申请中" value="1"></el-option>
+            <el-option label="处理中" value="2"></el-option>
+            <el-option label="售后完成" value="3"></el-option>
+            <el-option label="已驳回" value="4"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="下单时间">
@@ -334,6 +353,8 @@ const deliverLoading = ref(false);
 const searchForm = reactive({
   orderNo: '',
   status: '',
+  refundStatus: '',
+  afterSaleStatus: '',
   startDate: '',
   endDate: ''
 });
@@ -494,6 +515,8 @@ const resetForm = () => {
   Object.assign(searchForm, {
     orderNo: '',
     status: '',
+    refundStatus: '',
+    afterSaleStatus: '',
     startDate: '',
     endDate: ''
   });
@@ -701,12 +724,13 @@ const handleSubmitDeliver = async () => {
 // 获取状态文本
 const getStatusText = (status) => {
   const statusMap = {
-    '0': '待审核',
     '1': '待付款',
     '2': '待发货',
-    '3': '已发货',
-    '4': '已完成',
-    '5': '已取消'
+    '3': '待收货',
+    '4': '交易成功',
+    '5': '交易关闭',
+    '6': '退款',
+    '7': '售后'
   };
   return statusMap[status] || '-';
 };
@@ -714,12 +738,13 @@ const getStatusText = (status) => {
 // 获取状态标签类型
 const getStatusType = (status) => {
   const typeMap = {
-    '0': 'info',
     '1': 'warning',
     '2': 'primary',
-    '3': 'success',
+    '3': 'info',
     '4': 'success',
-    '5': 'danger'
+    '5': 'danger',
+    '6': 'warning',
+    '7': 'warning'
   };
   return typeMap[status] || 'info';
 };
