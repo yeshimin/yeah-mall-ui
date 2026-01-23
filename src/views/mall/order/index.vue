@@ -526,17 +526,27 @@ const handleOrderDetail = async (row) => {
         itemsData = response.data.shopProducts || [];
         
         // 直接使用接口返回的deliveryTracking字段
-        if (response.data.deliveryTracking && response.data.deliveryTracking.result) {
-          // 转换轨迹数据格式
-          deliveryTracking.value = (response.data.deliveryTracking.result.list || []).map(track => ({
-            time: track.datetime || '',
-            content: track.remark || ''
-          })).reverse(); // 倒序排列，最新的轨迹在最前面
-          
-          // 更新订单的快递状态信息
-          if (orderData) {
-            orderData.deliveryQueryStatus = '2'; // 查询成功
-            orderData.trackingStatusDetail = response.data.deliveryTracking.result.status_detail || 'UNKNOWN';
+        if (response.data.deliveryTracking) {
+          // 检查error_code是否为0，只有为0时才处理数据
+          if (response.data.deliveryTracking.error_code === 0 && response.data.deliveryTracking.result) {
+            // 转换轨迹数据格式
+            deliveryTracking.value = (response.data.deliveryTracking.result.list || []).map(track => ({
+              time: track.datetime || '',
+              content: track.remark || ''
+            })).reverse(); // 倒序排列，最新的轨迹在最前面
+            
+            // 更新订单的快递状态信息
+            if (orderData) {
+              orderData.deliveryQueryStatus = '2'; // 查询成功
+              orderData.trackingStatusDetail = response.data.deliveryTracking.result.status_detail || 'UNKNOWN';
+            }
+          } else {
+            // 清空之前的快递轨迹数据
+            deliveryTracking.value = [];
+            // 更新订单的快递状态信息为查询失败
+            if (orderData) {
+              orderData.deliveryQueryStatus = '3'; // 查询失败
+            }
           }
         }
       }
@@ -772,7 +782,8 @@ const handleManualQueryDelivery = async () => {
     if (response.code === 0) {
       // 直接使用接口返回的deliveryTracking数据或result数据
       const trackingData = response.data.deliveryTracking || response.data;
-      if (trackingData && trackingData.result) {
+      // 检查error_code是否为0，只有为0时才是成功
+      if (trackingData && trackingData.error_code === 0 && trackingData.result) {
         // 更新订单的快递状态信息
         if (currentOrder.value) {
           currentOrder.value.deliveryQueryStatus = '2'; // 查询成功
@@ -790,7 +801,8 @@ const handleManualQueryDelivery = async () => {
         if (currentOrder.value) {
           currentOrder.value.deliveryQueryStatus = '3'; // 查询失败
         }
-        ElMessage.error(response.message || '快递查询失败');
+        // 使用trackingData.reason作为错误信息，没有则使用默认信息
+        ElMessage.error(trackingData.reason || response.message || '快递查询失败');
       }
     } else {
       // 查询失败时更新订单状态
