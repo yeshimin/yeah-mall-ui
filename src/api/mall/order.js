@@ -41,11 +41,11 @@ export function updateShipInfo(data) {
 }
 
 // 查询快递轨迹
-export function queryTracking(orderNo) {
+export function queryTracking(orderId) {
   return request({
     url: `/mch/order/queryTracking`,
     method: 'get',
-    params: { orderNo }
+    params: { orderId }
   })
 }
 

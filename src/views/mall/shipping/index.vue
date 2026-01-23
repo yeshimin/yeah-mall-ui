@@ -480,7 +480,7 @@ const getLogisticsProviderList = async () => {
     const response = await queryDeliveryProviderList(params);
     if (response.code === 0 && response.data) {
       logisticsList.value = response.data.records || [];
-      logisticsPagination.total = response.data.total || 0;
+      logisticsPagination.total = parseInt(response.data.total) || 0;
     }
   } catch (error) {
     console.error('获取物流商列表失败:', error);

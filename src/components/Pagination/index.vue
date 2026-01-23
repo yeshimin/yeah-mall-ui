@@ -15,6 +15,7 @@
 </template>
 
 <script setup>
+import { ref, computed } from 'vue'
 import { scrollTo } from '@/utils/scroll-to'
 
 const props = defineProps({
@@ -77,10 +78,11 @@ const pageSize = computed({
   }
 })
 function handleSizeChange(val) {
-  if (currentPage.value * val > props.total) {
-    currentPage.value = 1
+  let newPage = currentPage.value
+  if (newPage * val > props.total) {
+    newPage = 1
   }
-  emit('pagination', { page: currentPage.value, limit: val })
+  emit('pagination', { page: newPage, limit: val })
   if (props.autoScroll) {
     scrollTo(0, 800)
   }

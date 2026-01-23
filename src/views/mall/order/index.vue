@@ -458,11 +458,18 @@ const getOrderList = async () => {
     const response = await queryOrderList(params);
     if (response.code === 0 && response.data) {
       orderList.value = response.data.records || [];
-      pagination.total = response.data.total || 0;
+      pagination.total = parseInt(response.data.total) || 0;
+    } else {
+      // 接口调用失败时，清空订单列表并设置total为0
+      orderList.value = [];
+      pagination.total = 0;
     }
   } catch (error) {
     console.error('获取订单列表失败:', error);
     ElMessage.error('获取订单列表失败');
+    // 异常时，清空订单列表并设置total为0
+    orderList.value = [];
+    pagination.total = 0;
   } finally {
     loading.value = false;
   }
@@ -778,7 +785,7 @@ const handleManualQueryDelivery = async () => {
   try {
     queryDeliveryLoading.value = true;
     // 调用快递查询接口
-    const response = await queryTracking(currentOrder.value.orderNo);
+    const response = await queryTracking(currentOrder.value.id);
     if (response.code === 0) {
       // 直接使用接口返回的deliveryTracking数据或result数据
       const trackingData = response.data.deliveryTracking || response.data;
