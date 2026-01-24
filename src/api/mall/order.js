@@ -57,3 +57,21 @@ export function remarkOrder(data) {
     data
   })
 }
+
+// 确认退款
+export function confirmRefund(data) {
+  return request({
+    url: `/mch/order/confirmRefund`,
+    method: 'post',
+    data
+  })
+}
+
+// 拒绝退款
+export function rejectRefund(data) {
+  return request({
+    url: `/mch/order/rejectRefund`,
+    method: 'post',
+    data
+  })
+}

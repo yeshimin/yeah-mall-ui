@@ -73,9 +73,14 @@
             <span>¥{{ scope.row.totalAmount.toFixed(2) }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="订单状态" min-width="100">
+        <el-table-column prop="status" label="订单状态" min-width="150">
           <template #default="scope">
-            <el-tag :type="getStatusType(scope.row.status)">{{ getStatusText(scope.row.status) }}</el-tag>
+            <div class="status-container">
+              <el-tag :type="getStatusType(scope.row.status)">{{ getStatusText(scope.row.status) }}</el-tag>
+              <el-tag v-if="scope.row.status === '6' || scope.row.status === 6" :type="getRefundStatusType(scope.row.refundStatus)" size="small" style="margin-left: 5px;">
+                {{ getRefundStatusText(scope.row.refundStatus) }}
+              </el-tag>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="买家信息" min-width="200">
@@ -93,11 +98,12 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" min-width="180" fixed="right">
+        <el-table-column label="操作" min-width="350" fixed="right">
           <template #default="scope">
             <el-button size="small" @click="handleOrderDetail(scope.row)">详情</el-button>
             <el-button size="small" type="primary" v-if="scope.row.status === '2' || scope.row.status === 2" @click="handleDeliver(scope.row)">发货</el-button>
             <el-button size="small" type="primary" v-if="scope.row.status === '3' || scope.row.status === 3" @click="handleDeliver(scope.row)">更新发货信息</el-button>
+            <el-button size="small" type="warning" v-if="(scope.row.status === '6' || scope.row.status === 6) && ((scope.row.refundStatus === '1' || scope.row.refundStatus === 1) || (scope.row.refundStatus === '5' || scope.row.refundStatus === 5))" @click="handleProcessRefund(scope.row)">处理退款</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -136,12 +142,44 @@
               <el-tag :type="getStatusType(currentOrder.status)">{{ getStatusText(currentOrder.status) }}</el-tag>
             </div>
             <div class="detail-item">
+              <span class="label">退款状态：</span>
+              <el-tag :type="getRefundStatusType(currentOrder.refundStatus)">{{ getRefundStatusText(currentOrder.refundStatus) }}</el-tag>
+            </div>
+            <div class="detail-item">
+              <span class="label">售后状态：</span>
+              <el-tag :type="getAfterSaleStatusType(currentOrder.afterSaleStatus)">{{ getAfterSaleStatusText(currentOrder.afterSaleStatus) }}</el-tag>
+            </div>
+            <div class="detail-item">
               <span class="label">下单时间：</span>
               <span class="value">{{ currentOrder.createTime }}</span>
             </div>
             <div class="detail-item">
               <span class="label">支付时间：</span>
               <span class="value">{{ currentOrder.paySuccessTime || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">退款申请时间：</span>
+              <span class="value">{{ currentOrder.refundApplyTime || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">退款申请原因：</span>
+              <span class="value">{{ currentOrder.refundApplyReason || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">退款确认时间：</span>
+              <span class="value">{{ currentOrder.refundConfirmTime || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">退款确认备注：</span>
+              <span class="value">{{ currentOrder.refundConfirmRemark || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">拒绝退款时间：</span>
+              <span class="value">{{ currentOrder.refundRejectTime || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">拒绝退款原因：</span>
+              <span class="value">{{ currentOrder.refundRejectReason || '-' }}</span>
             </div>
             <div class="detail-item">
               <span class="label">订单金额：</span>
@@ -226,7 +264,7 @@
               <h4>快递信息</h4>
             </div>
           </template>
-          <div v-if="currentOrder.status === '3' || currentOrder.status === 3" class="delivery-info">
+          <div v-if="currentOrder.deliveryProviderCode || currentOrder.trackingNo || currentOrder.shipTime" class="delivery-info">
             <div class="delivery-item">
               <span class="label">快递单号：</span>
               <span class="value">{{ currentOrder.trackingNo || '-' }}</span>
@@ -316,13 +354,55 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 确认退款对话框 -->
+    <el-dialog v-model="confirmRefundDialogVisible" title="确认退款" width="600px">
+      <el-form ref="confirmRefundFormRef" :model="confirmRefundForm" label-width="100px">
+        <el-form-item label="订单编号">
+          <el-input v-model="confirmRefundForm.orderNo" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="退款备注" prop="remark">
+          <el-input v-model="confirmRefundForm.remark" type="textarea" placeholder="请输入退款备注" rows="4"></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="confirmRefundDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSubmitConfirmRefund" :loading="confirmRefundLoading">确认退款</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 处理退款对话框 -->
+    <el-dialog v-model="processRefundDialogVisible" title="处理退款" width="600px">
+      <el-form ref="processRefundFormRef" :model="processRefundForm" label-width="100px">
+        <el-form-item label="订单编号">
+          <el-input v-model="processRefundForm.orderNo" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="处理方式" prop="action" required>
+          <el-radio-group v-model="processRefundForm.action">
+            <el-radio label="confirm">确认退款</el-radio>
+            <el-radio label="reject">拒绝退款</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item :label="processRefundForm.action === 'confirm' ? '退款备注' : '拒绝原因'" prop="remark">
+          <el-input v-model="processRefundForm.remark" type="textarea" :placeholder="processRefundForm.action === 'confirm' ? '请输入退款备注' : '请输入拒绝原因'" rows="4"></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="processRefundDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSubmitProcessRefund" :loading="processRefundLoading">提交处理</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { queryOrderList, getOrderDetail, deliverOrder, updateShipInfo, queryTracking } from '@/api/mall/order';
+import { queryOrderList, getOrderDetail, deliverOrder, updateShipInfo, queryTracking, confirmRefund, rejectRefund } from '@/api/mall/order';
 import { queryDeliveryProviderList } from '@/api/mall/shipping';
 import ImagePreview from '@/components/ImagePreview/index.vue';
 
@@ -394,6 +474,27 @@ const deliverForm = reactive({
 });
 // 当前操作类型：'deliver' 发货，'update' 更新发货信息
 const currentDeliverAction = ref('deliver');
+
+// 确认退款
+const confirmRefundDialogVisible = ref(false);
+const confirmRefundFormRef = ref(null);
+const confirmRefundForm = reactive({
+  orderId: '',
+  orderNo: '',
+  remark: ''
+});
+const confirmRefundLoading = ref(false);
+
+// 处理退款
+const processRefundDialogVisible = ref(false);
+const processRefundFormRef = ref(null);
+const processRefundForm = reactive({
+  orderId: '',
+  orderNo: '',
+  action: 'confirm',
+  remark: ''
+});
+const processRefundLoading = ref(false);
 
 // 快递公司列表
 const deliveryList = ref([]);
@@ -749,6 +850,56 @@ const getStatusType = (status) => {
   return typeMap[status] || 'info';
 };
 
+// 获取退款状态文本
+const getRefundStatusText = (status) => {
+  const statusMap = {
+    '0': '无',
+    '1': '申请中',
+    '2': '处理中',
+    '3': '退款成功',
+    '4': '已拒绝',
+    '5': '退款失败'
+  };
+  return statusMap[status] || '-';
+};
+
+// 获取退款状态标签类型
+const getRefundStatusType = (status) => {
+  const typeMap = {
+    '0': 'info',
+    '1': 'warning',
+    '2': 'primary',
+    '3': 'success',
+    '4': 'danger',
+    '5': 'danger'
+  };
+  return typeMap[status] || 'info';
+};
+
+// 获取售后状态文本
+const getAfterSaleStatusText = (status) => {
+  const statusMap = {
+    '0': '无',
+    '1': '申请中',
+    '2': '处理中',
+    '3': '售后完成',
+    '4': '已驳回'
+  };
+  return statusMap[status] || '-';
+};
+
+// 获取售后状态标签类型
+const getAfterSaleStatusType = (status) => {
+  const typeMap = {
+    '0': 'info',
+    '1': 'warning',
+    '2': 'primary',
+    '3': 'success',
+    '4': 'danger'
+  };
+  return typeMap[status] || 'info';
+};
+
 // 获取快递查询状态文本
 const getQueryStatusText = (status) => {
   const statusMap = {
@@ -852,6 +1003,98 @@ const handleManualQueryDelivery = async () => {
     ElMessage.error('快递查询失败，请重试');
   } finally {
     queryDeliveryLoading.value = false;
+  }
+};
+
+// 打开确认退款对话框
+const handleConfirmRefund = (row) => {
+  Object.assign(confirmRefundForm, {
+    orderId: row.id,
+    orderNo: row.orderNo,
+    remark: ''
+  });
+  confirmRefundDialogVisible.value = true;
+};
+
+// 打开处理退款对话框
+const handleProcessRefund = (row) => {
+  Object.assign(processRefundForm, {
+    orderId: row.id,
+    orderNo: row.orderNo,
+    action: 'confirm',
+    remark: ''
+  });
+  processRefundDialogVisible.value = true;
+};
+
+// 提交确认退款
+const handleSubmitConfirmRefund = async () => {
+  try {
+    const valid = await confirmRefundFormRef.value.validate();
+    if (valid) {
+      confirmRefundLoading.value = true;
+      
+      const response = await confirmRefund({
+        orderId: confirmRefundForm.orderId,
+        remark: confirmRefundForm.remark
+      });
+      
+      if (response.code === 0) {
+        confirmRefundDialogVisible.value = false;
+        confirmRefundLoading.value = false;
+        ElMessage.success('确认退款成功');
+        // 重新获取订单列表
+        getOrderList();
+      } else {
+        confirmRefundLoading.value = false;
+        ElMessage.error(response.message || '确认退款失败');
+      }
+    }
+  } catch (error) {
+    confirmRefundLoading.value = false;
+    console.error('确认退款失败:', error);
+    ElMessage.error('确认退款失败，请重试');
+  }
+};
+
+// 提交处理退款
+const handleSubmitProcessRefund = async () => {
+  try {
+    const valid = await processRefundFormRef.value.validate();
+    if (valid) {
+      processRefundLoading.value = true;
+      
+      // 根据选择的操作调用相应的API
+      let response;
+      if (processRefundForm.action === 'confirm') {
+        // 调用确认退款API
+        response = await confirmRefund({
+          orderId: processRefundForm.orderId,
+          remark: processRefundForm.remark
+        });
+      } else {
+        // 调用拒绝退款API
+        response = await rejectRefund({
+          orderId: processRefundForm.orderId,
+          reason: processRefundForm.remark
+        });
+      }
+      
+      if (response.code === 0) {
+        processRefundDialogVisible.value = false;
+        processRefundLoading.value = false;
+        ElMessage.success(processRefundForm.action === 'confirm' ? '确认退款成功' : '拒绝退款成功');
+        // 重新获取订单列表
+        getOrderList();
+      } else {
+        processRefundLoading.value = false;
+        ElMessage.error(response.message || '处理退款失败');
+      }
+    }
+  } catch (error) {
+    processRefundLoading.value = false;
+    console.error('处理退款失败:', error);
+    ElMessage.error('处理退款失败，请重试');
   }
 };
 
