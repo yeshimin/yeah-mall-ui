@@ -1,11 +1,9 @@
 <template>
   <div class="order-manage">
-    <!-- 页面头部 -->
     <div class="page-header">
       <h2>订单管理</h2>
     </div>
 
-    <!-- 搜索区域 -->
     <el-card class="search-card">
       <el-form ref="searchFormRef" :model="searchForm" label-position="left" label-width="80px" inline>
         <el-form-item label="订单编号">
@@ -57,7 +55,6 @@
       </el-form>
     </el-card>
 
-    <!-- 订单列表 -->
     <el-card class="list-card">
       <template #header>
         <div class="card-header">
@@ -98,17 +95,17 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" min-width="350" fixed="right">
+        <el-table-column label="操作" min-width="400" fixed="right">
           <template #default="scope">
             <el-button size="small" @click="handleOrderDetail(scope.row)">详情</el-button>
             <el-button size="small" type="primary" v-if="scope.row.status === '2' || scope.row.status === 2" @click="handleDeliver(scope.row)">发货</el-button>
             <el-button size="small" type="primary" v-if="scope.row.status === '3' || scope.row.status === 3" @click="handleDeliver(scope.row)">更新发货信息</el-button>
             <el-button size="small" type="warning" v-if="(scope.row.status === '6' || scope.row.status === 6) && ((scope.row.refundStatus === '1' || scope.row.refundStatus === 1) || (scope.row.refundStatus === '5' || scope.row.refundStatus === 5))" @click="handleProcessRefund(scope.row)">处理退款</el-button>
+            <el-button size="small" type="info" v-if="scope.row.refundStatus && scope.row.refundStatus !== '0' && scope.row.refundStatus !== 0" @click="handleViewRefundRecords(scope.row)">退款记录</el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <!-- 分页 -->
       <div class="pagination-container" style="margin-top: 20px; text-align: right;">
         <el-pagination
           v-model:current-page="pagination.current"
@@ -122,87 +119,161 @@
       </div>
     </el-card>
 
-    <!-- 订单详情对话框 -->
-    <el-dialog v-model="detailDialogVisible" title="订单详情" width="800px">
-      <div class="order-detail">
-        <!-- 基本信息 -->
-        <el-card class="detail-card" shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <h4>基本信息</h4>
+    <el-dialog v-model="detailDialogVisible" title="订单详情" width="900px">
+      <el-collapse v-model="activeCollapseNames">
+        <el-collapse-item title="订单信息" name="order">
+          <div class="detail-section">
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">订单编号：</span>
+                <span class="value">{{ currentOrder.orderNo }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">订单金额：</span>
+                <span class="value amount">¥{{ currentOrder.totalAmount.toFixed(2) }}</span>
+              </div>
             </div>
-          </template>
-          <div class="detail-content">
-            <div class="detail-item">
-              <span class="label">订单编号：</span>
-              <span class="value">{{ currentOrder.orderNo }}</span>
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">订单状态：</span>
+                <el-tag :type="getStatusType(currentOrder.status)">{{ getStatusText(currentOrder.status) }}</el-tag>
+              </div>
+              <div class="detail-item">
+                <span class="label">售后状态：</span>
+                <el-tag :type="getAfterSaleStatusType(currentOrder.afterSaleStatus)">{{ getAfterSaleStatusText(currentOrder.afterSaleStatus) }}</el-tag>
+              </div>
             </div>
-            <div class="detail-item">
-              <span class="label">订单状态：</span>
-              <el-tag :type="getStatusType(currentOrder.status)">{{ getStatusText(currentOrder.status) }}</el-tag>
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">下单时间：</span>
+                <span class="value">{{ currentOrder.createTime }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">支付时间：</span>
+                <span class="value">{{ currentOrder.paySuccessTime || '-' }}</span>
+              </div>
             </div>
-            <div class="detail-item">
-              <span class="label">退款状态：</span>
-              <el-tag :type="getRefundStatusType(currentOrder.refundStatus)">{{ getRefundStatusText(currentOrder.refundStatus) }}</el-tag>
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">支付超时时间：</span>
+                <span class="value">{{ currentOrder.payExpireTime || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">是否已评价：</span>
+                <span class="value">{{ currentOrder.reviewed ? '是' : '否' }}</span>
+              </div>
             </div>
-            <div class="detail-item">
-              <span class="label">售后状态：</span>
-              <el-tag :type="getAfterSaleStatusType(currentOrder.afterSaleStatus)">{{ getAfterSaleStatusText(currentOrder.afterSaleStatus) }}</el-tag>
-            </div>
-            <div class="detail-item">
-              <span class="label">下单时间：</span>
-              <span class="value">{{ currentOrder.createTime }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">支付时间：</span>
-              <span class="value">{{ currentOrder.paySuccessTime || '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">退款申请时间：</span>
-              <span class="value">{{ currentOrder.refundApplyTime || '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">退款申请原因：</span>
-              <span class="value">{{ currentOrder.refundApplyReason || '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">退款确认时间：</span>
-              <span class="value">{{ currentOrder.refundConfirmTime || '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">退款确认备注：</span>
-              <span class="value">{{ currentOrder.refundConfirmRemark || '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">拒绝退款时间：</span>
-              <span class="value">{{ currentOrder.refundRejectTime || '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">拒绝退款原因：</span>
-              <span class="value">{{ currentOrder.refundRejectReason || '-' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">订单金额：</span>
-              <span class="value">¥{{ currentOrder.totalAmount.toFixed(2) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">收货人：</span>
-              <span class="value">{{ currentOrder.receiverName }} {{ currentOrder.receiverContact }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">收货地址：</span>
-              <span class="value">{{ currentOrder.receiverFullAddress }}</span>
+            <div class="detail-row" v-if="currentOrder.closeTime || currentOrder.closeReason">
+              <div class="detail-item">
+                <span class="label">订单关闭时间：</span>
+                <span class="value">{{ currentOrder.closeTime || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">订单关闭原因：</span>
+                <span class="value">{{ currentOrder.closeReason || '-' }}</span>
+              </div>
             </div>
           </div>
-        </el-card>
+        </el-collapse-item>
 
-        <!-- 商品信息 -->
-        <el-card class="detail-card" shadow="hover" style="margin-top: 20px;">
-          <template #header>
-            <div class="card-header">
-              <h4>商品信息</h4>
+        <el-collapse-item title="退款信息" name="refund">
+          <div class="detail-section">
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">退款状态：</span>
+                <el-tag :type="getRefundStatusType(currentOrder.refundStatus)">{{ getRefundStatusText(currentOrder.refundStatus) }}</el-tag>
+              </div>
             </div>
-          </template>
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">退款申请时间：</span>
+                <span class="value">{{ currentOrder.refundApplyTime || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">退款申请原因：</span>
+                <span class="value">{{ currentOrder.refundApplyReason || '-' }}</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">退款确认时间：</span>
+                <span class="value">{{ currentOrder.refundConfirmTime || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">退款确认备注：</span>
+                <span class="value">{{ currentOrder.refundConfirmRemark || '-' }}</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">拒绝退款时间：</span>
+                <span class="value">{{ currentOrder.refundRejectTime || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">拒绝退款原因：</span>
+                <span class="value">{{ currentOrder.refundRejectReason || '-' }}</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">第三方退款成功时间：</span>
+                <span class="value">{{ currentOrder.refundSuccessTime || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">第三方退款摘要：</span>
+                <span class="value">{{ currentOrder.refundSummary || '-' }}</span>
+              </div>
+            </div>
+          </div>
+        </el-collapse-item>
+
+        <el-collapse-item title="收货地址" name="receiver">
+          <div class="detail-section">
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">收货人：</span>
+                <span class="value">{{ currentOrder.receiverName }} {{ currentOrder.receiverContact }}</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-item full-width">
+                <span class="label">收货地址：</span>
+                <span class="value">{{ currentOrder.receiverFullAddress || (currentOrder.receiverProvinceName + currentOrder.receiverCityName + currentOrder.receiverDistrictName + currentOrder.receiverDetailAddress) }}</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">邮政编码：</span>
+                <span class="value">{{ currentOrder.receiverPostalCode || '-' }}</span>
+              </div>
+            </div>
+          </div>
+        </el-collapse-item>
+
+        <el-collapse-item title="发货地址" name="shipper" v-if="currentOrder.shipperName || currentOrder.shipperFullAddress">
+          <div class="detail-section">
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">发货人：</span>
+                <span class="value">{{ currentOrder.shipperName }} {{ currentOrder.shipperContact }}</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-item full-width">
+                <span class="label">发货地址：</span>
+                <span class="value">{{ currentOrder.shipperFullAddress || (currentOrder.shipperProvinceName + currentOrder.shipperCityName + currentOrder.shipperDistrictName + currentOrder.shipperDetailAddress) }}</span>
+              </div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">邮政编码：</span>
+                <span class="value">{{ currentOrder.shipperPostalCode || '-' }}</span>
+              </div>
+            </div>
+          </div>
+        </el-collapse-item>
+
+        <el-collapse-item title="商品信息" name="products">
           <el-table :data="orderItems" style="width: 100%">
             <el-table-column label="商品图片" width="80">
               <template #default="scope">
@@ -255,47 +326,63 @@
               <span class="amount">¥{{ currentOrder.totalAmount.toFixed(2) }}</span>
             </div>
           </div>
-        </el-card>
+        </el-collapse-item>
 
-        <!-- 快递信息 -->
-        <el-card class="detail-card" shadow="hover" style="margin-top: 20px;">
-          <template #header>
-            <div class="card-header">
-              <h4>快递信息</h4>
+        <el-collapse-item title="快递信息" name="delivery">
+          <div v-if="currentOrder.deliveryProviderCode || currentOrder.trackingNo || currentOrder.shipTime" class="detail-section">
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">快递单号：</span>
+                <span class="value">{{ currentOrder.trackingNo || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">快递公司：</span>
+                <span class="value">
+                  {{ (deliveryList.find(item => item.code === currentOrder.deliveryProviderCode)?.name || currentOrder.deliveryProviderCode || '-') }}
+                </span>
+              </div>
             </div>
-          </template>
-          <div v-if="currentOrder.deliveryProviderCode || currentOrder.trackingNo || currentOrder.shipTime" class="delivery-info">
-            <div class="delivery-item">
-              <span class="label">快递单号：</span>
-              <span class="value">{{ currentOrder.trackingNo || '-' }}</span>
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">发货时间：</span>
+                <span class="value">{{ currentOrder.shipTime || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">签收时间：</span>
+                <span class="value">{{ currentOrder.receiveTime || '-' }}</span>
+              </div>
             </div>
-            <div class="delivery-item">
-              <span class="label">快递公司：</span>
-              <span class="value">
-                {{ (deliveryList.find(item => item.code === currentOrder.deliveryProviderCode)?.name || currentOrder.deliveryProviderCode || '-') }}
-              </span>
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">查询状态：</span>
+                <el-tag :type="getQueryStatusType(currentOrder.deliveryQueryStatus)" size="small">
+                  {{ getQueryStatusText(currentOrder.deliveryQueryStatus) }}
+                </el-tag>
+              </div>
+              <div class="detail-item">
+                <span class="label">快递状态：</span>
+                <el-tag :type="getTrackingStatusType(currentOrder.trackingStatusDetail)" size="small">
+                  {{ getTrackingStatusText(currentOrder.trackingStatusDetail) }}
+                </el-tag>
+              </div>
             </div>
-            <div class="delivery-item">
-              <span class="label">发货时间：</span>
-              <span class="value">{{ currentOrder.shipTime || '-' }}</span>
+            <div class="detail-row">
+              <div class="detail-item">
+                <span class="label">签收超时时间：</span>
+                <span class="value">{{ currentOrder.receiveExpireTime || '-' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">最后查询：</span>
+                <span class="value">{{ currentOrder.lastQueryTime || '未查询' }}</span>
+              </div>
             </div>
-            <div class="delivery-item">
-              <span class="label">查询状态：</span>
-              <el-tag :type="getQueryStatusType(currentOrder.deliveryQueryStatus)" size="small">
-                {{ getQueryStatusText(currentOrder.deliveryQueryStatus) }}
-              </el-tag>
+            <div class="detail-row" v-if="currentOrder.receiveRemark">
+              <div class="detail-item full-width">
+                <span class="label">签收备注：</span>
+                <span class="value">{{ currentOrder.receiveRemark }}</span>
+              </div>
             </div>
-            <div class="delivery-item">
-              <span class="label">快递状态：</span>
-              <el-tag :type="getTrackingStatusType(currentOrder.trackingStatusDetail)" size="small">
-                {{ getTrackingStatusText(currentOrder.trackingStatusDetail) }}
-              </el-tag>
-            </div>
-            <div class="delivery-item">
-              <span class="label">最后查询：</span>
-              <span class="value">{{ currentOrder.lastQueryTime || '未查询' }}</span>
-            </div>
-            <div class="delivery-item" style="margin-top: 10px;">
+            <div style="margin-top: 10px;">
               <el-button 
                 type="primary" 
                 size="small" 
@@ -306,7 +393,6 @@
               </el-button>
             </div>
             
-            <!-- 快递轨迹 -->
             <div class="delivery-tracking" style="margin-top: 20px;">
               <h5>快递轨迹</h5>
               <div v-if="deliveryTracking.length > 0" class="tracking-list">
@@ -323,8 +409,8 @@
           <div v-else class="no-delivery">
             <span>暂无快递信息</span>
           </div>
-        </el-card>
-      </div>
+        </el-collapse-item>
+      </el-collapse>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="detailDialogVisible = false">关闭</el-button>
@@ -332,7 +418,6 @@
       </template>
     </el-dialog>
 
-    <!-- 发货对话框 -->
     <el-dialog v-model="deliverDialogVisible" :title="currentDeliverAction === 'deliver' ? '订单发货' : '更新发货信息'" width="600px">
       <el-form ref="deliverFormRef" :model="deliverForm" label-width="100px">
         <el-form-item label="订单编号">
@@ -355,7 +440,6 @@
       </template>
     </el-dialog>
 
-    <!-- 确认退款对话框 -->
     <el-dialog v-model="confirmRefundDialogVisible" title="确认退款" width="600px">
       <el-form ref="confirmRefundFormRef" :model="confirmRefundForm" label-width="100px">
         <el-form-item label="订单编号">
@@ -373,7 +457,6 @@
       </template>
     </el-dialog>
 
-    <!-- 处理退款对话框 -->
     <el-dialog v-model="processRefundDialogVisible" title="处理退款" width="600px">
       <el-form ref="processRefundFormRef" :model="processRefundForm" label-width="100px">
         <el-form-item label="订单编号">
@@ -396,40 +479,161 @@
         </span>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="refundRecordsDialogVisible" title="退款记录" width="900px">
+      <div v-loading="refundRecordsLoading">
+        <el-table v-if="refundRecords.length > 0" :data="refundRecords" style="width: 100%">
+          <el-table-column prop="refundNo" label="退款编号" min-width="180"></el-table-column>
+          <el-table-column prop="totalAmount" label="总金额" min-width="100" align="right">
+            <template #default="scope">
+              <span>¥{{ scope.row.totalAmount.toFixed(2) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="refundAmount" label="退款金额" min-width="100" align="right">
+            <template #default="scope">
+              <span>¥{{ scope.row.refundAmount.toFixed(2) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="refundStatus" label="退款状态" min-width="120">
+            <template #default="scope">
+              <el-tag :type="getRefundRecordStatusType(scope.row.refundStatus)">{{ getRefundRecordStatusText(scope.row.refundStatus) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="refundReason" label="退款原因" min-width="200"></el-table-column>
+          <el-table-column prop="createTime" label="创建时间" min-width="180"></el-table-column>
+          <el-table-column prop="successTime" label="成功时间" min-width="180">
+            <template #default="scope">
+              <span>{{ scope.row.successTime || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="120" fixed="right">
+            <template #default="scope">
+              <el-button size="small" @click="handleViewRefundDetail(scope.row.id)">详情</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div v-else class="no-refund-records">
+          <span>暂无退款记录</span>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="refundRecordsDialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="refundDetailDialogVisible" title="退款记录详情" width="700px">
+      <div v-loading="refundDetailLoading" class="refund-detail">
+        <div v-if="currentRefundDetail && Object.keys(currentRefundDetail).length > 0" class="detail-section">
+          <div class="detail-row">
+            <div class="detail-item">
+              <span class="label">退款编号：</span>
+              <span class="value">{{ currentRefundDetail.refundNo || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">订单编号：</span>
+              <span class="value">{{ currentRefundDetail.orderNo || '-' }}</span>
+            </div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-item">
+              <span class="label">总金额：</span>
+              <span class="value amount">¥{{ currentRefundDetail.totalAmount ? currentRefundDetail.totalAmount.toFixed(2) : '0.00' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">退款金额：</span>
+              <span class="value amount">¥{{ currentRefundDetail.refundAmount ? currentRefundDetail.refundAmount.toFixed(2) : '0.00' }}</span>
+            </div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-item">
+              <span class="label">退款状态：</span>
+              <el-tag :type="getRefundRecordStatusType(currentRefundDetail.refundStatus)">{{ getRefundRecordStatusText(currentRefundDetail.refundStatus) }}</el-tag>
+            </div>
+            <div class="detail-item">
+              <span class="label">退款原因：</span>
+              <span class="value">{{ currentRefundDetail.refundReason || '-' }}</span>
+            </div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-item">
+              <span class="label">创建时间：</span>
+              <span class="value">{{ currentRefundDetail.createTime || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">成功时间：</span>
+              <span class="value">{{ currentRefundDetail.successTime || '-' }}</span>
+            </div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-item">
+              <span class="label">退款入账账户：</span>
+              <span class="value">{{ currentRefundDetail.userReceivedAccount || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">微信支付摘要：</span>
+              <span class="value">{{ currentRefundDetail.summary || '-' }}</span>
+            </div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-item">
+              <span class="label">实际总金额：</span>
+              <span class="value">{{ currentRefundDetail.realTotalAmount ? `¥${currentRefundDetail.realTotalAmount.toFixed(2)}` : '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">实际退款金额：</span>
+              <span class="value">{{ currentRefundDetail.realRefundAmount ? `¥${currentRefundDetail.realRefundAmount.toFixed(2)}` : '-' }}</span>
+            </div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-item">
+              <span class="label">创建人：</span>
+              <span class="value">{{ currentRefundDetail.createBy || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">更新人：</span>
+              <span class="value">{{ currentRefundDetail.updateBy || '-' }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-else class="no-data">
+          <span>暂无退款详情数据</span>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="refundDetailDialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { queryOrderList, getOrderDetail, deliverOrder, updateShipInfo, queryTracking, confirmRefund, rejectRefund } from '@/api/mall/order';
+import { queryOrderList, getOrderDetail, deliverOrder, updateShipInfo, queryTracking, confirmRefund, rejectRefund, queryRefundRecords, getRefundDetail } from '@/api/mall/order';
 import { queryDeliveryProviderList } from '@/api/mall/shipping';
 import ImagePreview from '@/components/ImagePreview/index.vue';
 
-// 构造完整的图片URL
 function getFullImageUrl(fileKey) {
   if (!fileKey) return '';
   
-  // 根据当前激活的环境获取相应的基础地址配置
   const env = import.meta.env.VITE_APP_ENV;
   const baseApi = import.meta.env.VITE_APP_BASE_API || '';
   
-  // 根据不同环境构造图片URL
   if (env === 'development') {
-    // 开发环境从环境变量中获取目标地址
     const proxyTarget = import.meta.env.VITE_APP_DEV_BACKEND_URL || 'http://localhost:8080';
     return `${proxyTarget}/public/storage/preview?fileKey=${fileKey}`;
   } else {
-    // 其他环境(生产、测试等)使用配置的基础API路径
     return `${baseApi}/public/storage/preview?fileKey=${fileKey}`;
   }
 }
 
-// 加载状态
 const loading = ref(false);
 const deliverLoading = ref(false);
 
-// 搜索表单
 const searchForm = reactive({
   orderNo: '',
   status: '',
@@ -439,31 +643,27 @@ const searchForm = reactive({
   endDate: ''
 });
 
-// 日期范围
 const dateRange = ref([]);
 
-// 分页数据
 const pagination = reactive({
   current: 1,
   pageSize: 10,
   total: 0
 });
 
-// 排序数据
 const sortConfig = reactive({
   prop: 'createTime',
-  order: 'desc' // 默认降序
+  order: 'desc'
 });
 
-// 订单列表
 const orderList = ref([]);
 
-// 订单详情
 const detailDialogVisible = ref(false);
 const currentOrder = ref(null);
 const orderItems = ref([]);
 
-// 发货
+const activeCollapseNames = ref(['order', 'refund', 'receiver', 'products', 'delivery']);
+
 const deliverDialogVisible = ref(false);
 const deliverFormRef = ref(null);
 const deliverForm = reactive({
@@ -472,10 +672,8 @@ const deliverForm = reactive({
   deliveryCompany: '',
   deliveryNo: ''
 });
-// 当前操作类型：'deliver' 发货，'update' 更新发货信息
 const currentDeliverAction = ref('deliver');
 
-// 确认退款
 const confirmRefundDialogVisible = ref(false);
 const confirmRefundFormRef = ref(null);
 const confirmRefundForm = reactive({
@@ -485,7 +683,6 @@ const confirmRefundForm = reactive({
 });
 const confirmRefundLoading = ref(false);
 
-// 处理退款
 const processRefundDialogVisible = ref(false);
 const processRefundFormRef = ref(null);
 const processRefundForm = reactive({
@@ -496,35 +693,36 @@ const processRefundForm = reactive({
 });
 const processRefundLoading = ref(false);
 
-// 快递公司列表
+const refundRecordsDialogVisible = ref(false);
+const refundRecordsLoading = ref(false);
+const refundRecords = ref([]);
+const currentRefundOrder = ref(null);
+
+const refundDetailDialogVisible = ref(false);
+const refundDetailLoading = ref(false);
+const currentRefundDetail = ref({});
+
 const deliveryList = ref([]);
 
-// 快递查询相关
 const queryDeliveryLoading = ref(false);
 const deliveryTracking = ref([]);
 
-// 获取物流商列表
 const getLogisticsList = async (searchKeyword = '') => {
   try {
-    // 构建搜索条件
     const conditions = [];
     
-    // 添加名称模糊查询
     if (searchKeyword) {
       conditions.push(`name:like:${searchKeyword}`);
     }
     
-    // 添加排序条件：主流的优先排序
     conditions.push('isPopular:sort:desc');
-    // 添加默认排序
     conditions.push('updateTime:sort:desc');
     
     const response = await queryDeliveryProviderList({
-      size: 100, // 一次加载100条
+      size: 100,
       conditions_: conditions.join(';')
     });
     if (response.code === 0 && response.data) {
-      // 保持快递公司的code默认格式，不转换为大写
       deliveryList.value = (response.data.records || []).map(delivery => ({
         ...delivery
       }));
@@ -534,38 +732,30 @@ const getLogisticsList = async (searchKeyword = '') => {
   }
 };
 
-// 防抖定时器
 let deliverySearchTimer = null;
 
-// 处理快递公司搜索（带防抖）
 const handleDeliveryFilter = (value) => {
-  // 清除之前的定时器
   if (deliverySearchTimer) {
     clearTimeout(deliverySearchTimer);
   }
   
-  // 设置新的定时器，300ms后执行搜索
   deliverySearchTimer = setTimeout(() => {
     getLogisticsList(value);
   }, 300);
 };
 
-// 处理排序变化
 const handleSortChange = ({ prop, order }) => {
   if ((prop === 'createTime' || prop === 'paySuccessTime') && order) {
     sortConfig.prop = prop;
     sortConfig.order = order === 'ascending' ? 'asc' : 'desc';
-    // 重新获取订单列表
     getOrderList();
   }
 };
 
-// 获取订单列表
 const getOrderList = async () => {
   try {
     loading.value = true;
     
-    // 构建排序条件
     const sortField = sortConfig.prop;
     const sortOrder = sortConfig.order;
     const conditions_ = `${sortField}:sort:${sortOrder}`;
@@ -574,7 +764,7 @@ const getOrderList = async () => {
       ...searchForm,
       current: pagination.current,
       size: pagination.pageSize,
-      conditions_ // 添加排序条件
+      conditions_
     };
     
     const response = await queryOrderList(params);
@@ -582,14 +772,12 @@ const getOrderList = async () => {
       orderList.value = response.data.records || [];
       pagination.total = parseInt(response.data.total) || 0;
     } else {
-      // 接口调用失败时，清空订单列表并设置total为0
       orderList.value = [];
       pagination.total = 0;
     }
   } catch (error) {
     console.error('获取订单列表失败:', error);
     ElMessage.error('获取订单列表失败');
-    // 异常时，清空订单列表并设置total为0
     orderList.value = [];
     pagination.total = 0;
   } finally {
@@ -597,9 +785,7 @@ const getOrderList = async () => {
   }
 };
 
-// 搜索
 const handleSearch = () => {
-  // 处理日期范围
   if (dateRange.value && dateRange.value.length === 2) {
     searchForm.startDate = dateRange.value[0];
     searchForm.endDate = dateRange.value[1];
@@ -611,7 +797,6 @@ const handleSearch = () => {
   getOrderList();
 };
 
-// 重置
 const resetForm = () => {
   Object.assign(searchForm, {
     orderNo: '',
@@ -621,62 +806,49 @@ const resetForm = () => {
     startDate: '',
     endDate: ''
   });
-  // 重置日期范围
   dateRange.value = [];
   pagination.current = 1;
   getOrderList();
 };
 
-// 分页大小变化
 const handleSizeChange = (size) => {
   pagination.pageSize = size;
   getOrderList();
 };
 
-// 当前页变化
 const handleCurrentChange = (current) => {
   pagination.current = current;
   getOrderList();
 };
 
-// 订单详情
 const handleOrderDetail = async (row) => {
   try {
-    // 清空之前的快递轨迹数据，避免信息残留
     deliveryTracking.value = [];
     
-    // 先尝试从API获取数据
     let orderData = null;
     let itemsData = [];
     
     try {
       const response = await getOrderDetail(row.id);
       if (response.code === 0 && response.data) {
-        // 解析新的API返回格式
         orderData = response.data.order;
         itemsData = response.data.shopProducts || [];
         
-        // 直接使用接口返回的deliveryTracking字段
         if (response.data.deliveryTracking) {
-          // 检查error_code是否为0，只有为0时才处理数据
           if (response.data.deliveryTracking.error_code === 0 && response.data.deliveryTracking.result) {
-            // 转换轨迹数据格式
             deliveryTracking.value = (response.data.deliveryTracking.result.list || []).map(track => ({
               time: track.datetime || '',
               content: track.remark || ''
-            })).reverse(); // 倒序排列，最新的轨迹在最前面
+            })).reverse();
             
-            // 更新订单的快递状态信息
             if (orderData) {
-              orderData.deliveryQueryStatus = '2'; // 查询成功
+              orderData.deliveryQueryStatus = '2';
               orderData.trackingStatusDetail = response.data.deliveryTracking.result.status_detail || 'UNKNOWN';
             }
           } else {
-            // 清空之前的快递轨迹数据
             deliveryTracking.value = [];
-            // 更新订单的快递状态信息为查询失败
             if (orderData) {
-              orderData.deliveryQueryStatus = '3'; // 查询失败
+              orderData.deliveryQueryStatus = '3';
             }
           }
         }
@@ -685,9 +857,7 @@ const handleOrderDetail = async (row) => {
       console.log('API调用失败，使用mock数据:', apiError);
     }
     
-    // 如果API调用失败或没有数据，使用mock数据
     if (!orderData) {
-      // Mock订单数据
       orderData = {
         ...row,
         paySuccessTime: row.paySuccessTime || '2026-01-16 14:30:00',
@@ -699,7 +869,6 @@ const handleOrderDetail = async (row) => {
         deliverTime: row.status >= '3' ? '2026-01-16 15:00:00' : ''
       };
       
-      // Mock商品数据（使用新的格式）
       itemsData = [
         {
           id: 1,
@@ -709,20 +878,8 @@ const handleOrderDetail = async (row) => {
           skuId: 29,
           skuName: 'C型挖掘机',
           specs: [
-            {
-              specId: 1,
-              specName: '颜色',
-              optId: 2,
-              optName: '黄色',
-              sort: 1
-            },
-            {
-              specId: 3,
-              specName: '尺寸',
-              optId: 5,
-              optName: '大杯',
-              sort: 2
-            }
+            { specId: 1, specName: '颜色', optId: 2, optName: '黄色', sort: 1 },
+            { specId: 3, specName: '尺寸', optId: 5, optName: '大杯', sort: 2 }
           ],
           price: 2222.00,
           quantity: 2
@@ -735,20 +892,8 @@ const handleOrderDetail = async (row) => {
           skuId: 36,
           skuName: '4个规格',
           specs: [
-            {
-              specId: 1,
-              specName: '颜色',
-              optId: 1,
-              optName: '红色',
-              sort: 1
-            },
-            {
-              specId: 9,
-              specName: '重量',
-              optId: 21,
-              optName: '很重',
-              sort: 2
-            }
+            { specId: 1, specName: '颜色', optId: 1, optName: '红色', sort: 1 },
+            { specId: 9, specName: '重量', optId: 21, optName: '很重', sort: 2 }
           ],
           price: 111.00,
           quantity: 1
@@ -758,6 +903,7 @@ const handleOrderDetail = async (row) => {
     
     currentOrder.value = orderData;
     orderItems.value = itemsData;
+    activeCollapseNames.value = ['order', 'refund', 'receiver', 'products', 'delivery'];
     detailDialogVisible.value = true;
   } catch (error) {
     console.error('获取订单详情失败:', error);
@@ -765,12 +911,9 @@ const handleOrderDetail = async (row) => {
   }
 };
 
-// 发货
 const handleDeliver = async (row) => {
-  // 设置当前操作类型
   currentDeliverAction.value = row.trackingNo || row.status === '3' ? 'update' : 'deliver';
   
-  // 使用订单的deliveryProviderCode作为快递公司code，保持默认格式
   const deliveryProviderCode = row.deliveryProviderCode || '';
   
   Object.assign(deliverForm, {
@@ -780,21 +923,17 @@ const handleDeliver = async (row) => {
     deliveryNo: row.trackingNo || ''
   });
   
-  // 在打开对话框前获取物流商列表
   await getLogisticsList();
   deliverDialogVisible.value = true;
 };
 
-// 提交发货
 const handleSubmitDeliver = async () => {
   try {
     const valid = await deliverFormRef.value.validate();
     if (valid) {
       deliverLoading.value = true;
       
-      // 查找当前订单
       const currentRow = orderList.value.find(item => item.id === deliverForm.orderId);
-      // 根据订单是否有trackingNo决定调用哪个接口
       const apiMethod = currentRow?.trackingNo ? updateShipInfo : deliverOrder;
       const successMessage = currentRow?.trackingNo ? '更新发货信息成功' : '发货成功';
       
@@ -808,7 +947,6 @@ const handleSubmitDeliver = async () => {
         deliverDialogVisible.value = false;
         deliverLoading.value = false;
         ElMessage.success(successMessage);
-        // 重新获取订单列表
         getOrderList();
       } else {
         deliverLoading.value = false;
@@ -822,7 +960,6 @@ const handleSubmitDeliver = async () => {
   }
 };
 
-// 获取状态文本
 const getStatusText = (status) => {
   const statusMap = {
     '1': '待付款',
@@ -836,7 +973,6 @@ const getStatusText = (status) => {
   return statusMap[status] || '-';
 };
 
-// 获取状态标签类型
 const getStatusType = (status) => {
   const typeMap = {
     '1': 'warning',
@@ -850,7 +986,6 @@ const getStatusType = (status) => {
   return typeMap[status] || 'info';
 };
 
-// 获取退款状态文本
 const getRefundStatusText = (status) => {
   const statusMap = {
     '0': '无',
@@ -863,7 +998,6 @@ const getRefundStatusText = (status) => {
   return statusMap[status] || '-';
 };
 
-// 获取退款状态标签类型
 const getRefundStatusType = (status) => {
   const typeMap = {
     '0': 'info',
@@ -876,7 +1010,6 @@ const getRefundStatusType = (status) => {
   return typeMap[status] || 'info';
 };
 
-// 获取售后状态文本
 const getAfterSaleStatusText = (status) => {
   const statusMap = {
     '0': '无',
@@ -888,7 +1021,6 @@ const getAfterSaleStatusText = (status) => {
   return statusMap[status] || '-';
 };
 
-// 获取售后状态标签类型
 const getAfterSaleStatusType = (status) => {
   const typeMap = {
     '0': 'info',
@@ -900,7 +1032,6 @@ const getAfterSaleStatusType = (status) => {
   return typeMap[status] || 'info';
 };
 
-// 获取快递查询状态文本
 const getQueryStatusText = (status) => {
   const statusMap = {
     '0': '未查询',
@@ -913,7 +1044,6 @@ const getQueryStatusText = (status) => {
   return statusMap[status] || '-';
 };
 
-// 获取快递查询状态标签类型
 const getQueryStatusType = (status) => {
   const typeMap = {
     '0': 'info',
@@ -926,7 +1056,6 @@ const getQueryStatusType = (status) => {
   return typeMap[status] || 'info';
 };
 
-// 获取快递轨迹状态文本
 const getTrackingStatusText = (status) => {
   const statusMap = {
     'WAIT_ACCEPT': '待揽收',
@@ -941,7 +1070,6 @@ const getTrackingStatusText = (status) => {
   return statusMap[status] || '未知';
 };
 
-// 获取快递轨迹状态标签类型
 const getTrackingStatusType = (status) => {
   const typeMap = {
     'WAIT_ACCEPT': 'info',
@@ -956,48 +1084,58 @@ const getTrackingStatusType = (status) => {
   return typeMap[status] || 'info';
 };
 
-// 手动查询快递轨迹
+const getRefundRecordStatusText = (status) => {
+  const statusMap = {
+    'SUCCESS': '退款成功',
+    'CLOSED': '退款关闭',
+    'PROCESSING': '退款处理中',
+    'ABNORMAL': '退款异常'
+  };
+  return statusMap[status] || status || '-';
+};
+
+const getRefundRecordStatusType = (status) => {
+  const typeMap = {
+    'SUCCESS': 'success',
+    'CLOSED': 'info',
+    'PROCESSING': 'warning',
+    'ABNORMAL': 'danger'
+  };
+  return typeMap[status] || 'info';
+};
+
 const handleManualQueryDelivery = async () => {
   try {
     queryDeliveryLoading.value = true;
-    // 调用快递查询接口
     const response = await queryTracking(currentOrder.value.id);
     if (response.code === 0) {
-      // 直接使用接口返回的deliveryTracking数据或result数据
       const trackingData = response.data.deliveryTracking || response.data;
-      // 检查error_code是否为0，只有为0时才是成功
       if (trackingData && trackingData.error_code === 0 && trackingData.result) {
-        // 更新订单的快递状态信息
         if (currentOrder.value) {
-          currentOrder.value.deliveryQueryStatus = '2'; // 查询成功
+          currentOrder.value.deliveryQueryStatus = '2';
           currentOrder.value.trackingStatusDetail = trackingData.result.status_detail || 'UNKNOWN';
         }
         
-        // 转换轨迹数据格式
         deliveryTracking.value = (trackingData.result.list || []).map(track => ({
           time: track.datetime || '',
           content: track.remark || ''
-        })).reverse(); // 倒序排列，最新的轨迹在最前面
+        })).reverse();
         ElMessage.success('快递查询成功');
       } else {
-        // 查询失败时更新订单状态
         if (currentOrder.value) {
-          currentOrder.value.deliveryQueryStatus = '3'; // 查询失败
+          currentOrder.value.deliveryQueryStatus = '3';
         }
-        // 使用trackingData.reason作为错误信息，没有则使用默认信息
         ElMessage.error(trackingData.reason || response.message || '快递查询失败');
       }
     } else {
-      // 查询失败时更新订单状态
       if (currentOrder.value) {
-        currentOrder.value.deliveryQueryStatus = '3'; // 查询失败
+        currentOrder.value.deliveryQueryStatus = '3';
       }
       ElMessage.error(response.message || '快递查询失败');
     }
   } catch (error) {
-    // 异常时更新订单状态
     if (currentOrder.value) {
-      currentOrder.value.deliveryQueryStatus = '3'; // 查询失败
+      currentOrder.value.deliveryQueryStatus = '3';
     }
     console.error('快递查询失败:', error);
     ElMessage.error('快递查询失败，请重试');
@@ -1006,7 +1144,6 @@ const handleManualQueryDelivery = async () => {
   }
 };
 
-// 打开确认退款对话框
 const handleConfirmRefund = (row) => {
   Object.assign(confirmRefundForm, {
     orderId: row.id,
@@ -1016,7 +1153,6 @@ const handleConfirmRefund = (row) => {
   confirmRefundDialogVisible.value = true;
 };
 
-// 打开处理退款对话框
 const handleProcessRefund = (row) => {
   Object.assign(processRefundForm, {
     orderId: row.id,
@@ -1027,7 +1163,54 @@ const handleProcessRefund = (row) => {
   processRefundDialogVisible.value = true;
 };
 
-// 提交确认退款
+const handleViewRefundRecords = async (row) => {
+  currentRefundOrder.value = row;
+  refundRecords.value = [];
+  refundRecordsDialogVisible.value = true;
+  refundRecordsLoading.value = true;
+  
+  try {
+    const response = await queryRefundRecords({
+      orderId: row.id,
+      conditions_: 'id:sort:desc'
+    });
+    
+    if (response.code === 0 && response.data) {
+      refundRecords.value = response.data.records || response.data;
+    } else {
+      refundRecords.value = [];
+    }
+  } catch (error) {
+    console.error('获取退款记录失败:', error);
+    ElMessage.error('获取退款记录失败');
+    refundRecords.value = [];
+  } finally {
+    refundRecordsLoading.value = false;
+  }
+};
+
+const handleViewRefundDetail = async (refundId) => {
+  refundDetailLoading.value = true;
+  
+  try {
+    const response = await getRefundDetail(refundId);
+    
+    if (response.code === 0 && response.data) {
+      // 正确处理API响应，退款详情在response.data.data中
+      currentRefundDetail.value = response.data.data || response.data;
+      // 确保数据获取成功后再打开对话框
+      refundDetailDialogVisible.value = true;
+    } else {
+      ElMessage.error('获取退款记录详情失败');
+    }
+  } catch (error) {
+    console.error('获取退款记录详情失败:', error);
+    ElMessage.error('获取退款记录详情失败');
+  } finally {
+    refundDetailLoading.value = false;
+  }
+};
+
 const handleSubmitConfirmRefund = async () => {
   try {
     const valid = await confirmRefundFormRef.value.validate();
@@ -1043,7 +1226,6 @@ const handleSubmitConfirmRefund = async () => {
         confirmRefundDialogVisible.value = false;
         confirmRefundLoading.value = false;
         ElMessage.success('确认退款成功');
-        // 重新获取订单列表
         getOrderList();
       } else {
         confirmRefundLoading.value = false;
@@ -1057,23 +1239,19 @@ const handleSubmitConfirmRefund = async () => {
   }
 };
 
-// 提交处理退款
 const handleSubmitProcessRefund = async () => {
   try {
     const valid = await processRefundFormRef.value.validate();
     if (valid) {
       processRefundLoading.value = true;
       
-      // 根据选择的操作调用相应的API
       let response;
       if (processRefundForm.action === 'confirm') {
-        // 调用确认退款API
         response = await confirmRefund({
           orderId: processRefundForm.orderId,
           remark: processRefundForm.remark
         });
       } else {
-        // 调用拒绝退款API
         response = await rejectRefund({
           orderId: processRefundForm.orderId,
           reason: processRefundForm.remark
@@ -1084,7 +1262,6 @@ const handleSubmitProcessRefund = async () => {
         processRefundDialogVisible.value = false;
         processRefundLoading.value = false;
         ElMessage.success(processRefundForm.action === 'confirm' ? '确认退款成功' : '拒绝退款成功');
-        // 重新获取订单列表
         getOrderList();
       } else {
         processRefundLoading.value = false;
@@ -1098,9 +1275,7 @@ const handleSubmitProcessRefund = async () => {
   }
 };
 
-// // 生命周期
 onMounted(async () => {
-  // 获取订单列表
   await getOrderList();
 });
 </script>
@@ -1151,22 +1326,43 @@ onMounted(async () => {
   color: #ccc;
 }
 
-.detail-content {
+.detail-section {
+  padding: 10px;
+}
+
+.detail-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  margin-bottom: 10px;
 }
 
 .detail-item {
   display: flex;
   align-items: center;
-  min-width: 300px;
+  min-width: 250px;
+  margin-right: 20px;
+}
+
+.detail-item.full-width {
+  min-width: 100%;
+  margin-right: 0;
 }
 
 .detail-item .label {
-  width: 100px;
+  width: 110px;
   font-weight: bold;
   color: #606266;
+  flex-shrink: 0;
+}
+
+.detail-item .value {
+  color: #333;
+  word-break: break-all;
+}
+
+.detail-item .amount {
+  font-weight: bold;
+  color: #f56c6c;
 }
 
 .delivery-info {
@@ -1238,7 +1434,8 @@ onMounted(async () => {
 }
 
 .no-tracking,
-.no-delivery {
+.no-delivery,
+.no-refund-records {
   text-align: center;
   color: #909399;
   padding: 20px 0;
@@ -1266,5 +1463,19 @@ onMounted(async () => {
 .amount {
   font-weight: bold;
   color: #f56c6c;
+}
+
+:deep(.el-collapse-item__header) {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+:deep(.el-collapse-item__content) {
+  padding-bottom: 20px;
+}
+
+.refund-detail {
+  max-height: 500px;
+  overflow-y: auto;
 }
 </style>

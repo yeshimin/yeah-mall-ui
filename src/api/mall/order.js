@@ -75,3 +75,21 @@ export function rejectRefund(data) {
     data
   })
 }
+
+// 查询退款记录
+export function queryRefundRecords(params) {
+  return request({
+    url: `/mch/orderRefund/query`,
+    method: 'get',
+    params
+  })
+}
+
+// 获取退款记录详情
+export function getRefundDetail(id) {
+  return request({
+    url: `/mch/orderRefund/crud/detail`,
+    method: 'get',
+    params: { id }
+  })
+}
