@@ -149,6 +149,19 @@ export const constantRoutes = [
         meta: { title: '订单管理', icon: 'shopping-cart' }
       }
     ]
+  },
+  {
+    path: '/mall/cschat',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mall/cschat/index.vue'),
+        name: 'MallCustomerService',
+        meta: { title: '客服消息', icon: 'message' }
+      }
+    ]
   }
 ]
 
@@ -179,6 +192,20 @@ export const dynamicRoutes = [
         component: () => import('@/views/mall/order/index.vue'),
         name: 'MallOrderManagement',
         meta: { title: '订单管理', noCache: true }
+      }
+    ]
+  },
+  {
+    path: '/mall/cschat',
+    component: Layout,
+    permissions: ['mall:cschat:list'],
+    meta: { title: '客服消息', icon: 'message' },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mall/cschat/index.vue'),
+        name: 'MallCustomerService',
+        meta: { title: '客服消息', noCache: true }
       }
     ]
   },

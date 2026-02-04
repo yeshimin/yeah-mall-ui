@@ -8,6 +8,7 @@ import { isRelogin } from '@/utils/request'
 import useUserStore from '@/store/modules/user'
 import useSettingsStore from '@/store/modules/settings'
 import usePermissionStore from '@/store/modules/permission'
+import wsService from '@/utils/websocket'
 
 NProgress.configure({ showSpinner: false })
 
@@ -40,6 +41,8 @@ router.beforeEach((to, from, next) => {
                 router.addRoute(route) // 动态添加可访问路由表
               }
             })
+            // 初始化WebSocket连接
+            wsService.init()
             next({ ...to, replace: true }) // hack方法 确保addRoutes已完成
           })
         }).catch(err => {
@@ -49,6 +52,8 @@ router.beforeEach((to, from, next) => {
           })
         })
       } else {
+        // 已登录且有角色信息，确保WebSocket连接
+        wsService.init()
         next()
       }
     }

@@ -2,6 +2,7 @@ import { login, logout, getInfoByType } from '@/api/login'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import { isHttp, isEmpty } from "@/utils/validate"
 import defAva from '@/assets/images/profile.jpg'
+import wsService from '@/utils/websocket'
 
 // 获取当前登录类型（admin/merchant）
 export function getLoginType() {
@@ -81,6 +82,8 @@ const useUserStore = defineStore(
             this.roles = []
             this.permissions = []
             removeToken()
+            // 退出登录时断开WebSocket连接
+            wsService.disconnect()
             resolve()
           // }).catch(error => {
           //   reject(error)
