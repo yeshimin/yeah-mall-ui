@@ -183,6 +183,12 @@ const chatMessagesRef = ref(null);
 const selectedImageFile = ref(null);
 const imagePreviewUrl = ref('');
 const inputDisabled = ref(false);
+const messagePagination = reactive({
+  current: 1,
+  pageSize: 50,
+  total: 0,
+  hasMore: true
+});
 
 const searchForm = reactive({
   status: '',
@@ -279,20 +285,21 @@ const getConversationList = async () => {
 };
 
 // 获取聊天消息
-const getChatMessages = async (conversationId) => {
+const getChatMessages = async (conversationId, isLoadMore = false) => {
   try {
-    messagesLoading.value = true;
+    if (!isLoadMore) {
+      messagesLoading.value = true;
+    }
     
     const params = {
       conversationId,
-      current: 1,
-      size: 50
+      current: isLoadMore ? messagePagination.current + 1 : 1,
+      size: messagePagination.pageSize
     };
     
     const response = await queryConversationMessages(params);
     if (response.code === 0 && response.data) {
-      // 转换消息格式并倒序，确保最新的消息在下面
-      chatMessages.value = (response.data.records || []).map(msg => ({
+      const newMessages = (response.data.records || []).map(msg => ({
         id: msg.id,
         conversationId: msg.conversationId,
         content: msg.msgContent,
@@ -300,17 +307,38 @@ const getChatMessages = async (conversationId) => {
         msgType: msg.msgType, // 消息类型：1-文本，2-图片
         createTime: msg.createTime,
         avatar: 'https://via.placeholder.com/40'
-      })).reverse();
+      }));
+      
+      if (isLoadMore) {
+        // 加载更多消息，添加到数组前面
+        chatMessages.value = [...newMessages, ...chatMessages.value];
+        messagePagination.current++;
+      } else {
+        // 首次加载消息，替换数组并倒序
+        chatMessages.value = newMessages.reverse();
+        messagePagination.current = 1;
+      }
+      
+      messagePagination.total = parseInt(response.data.total) || 0;
+      messagePagination.hasMore = chatMessages.value.length < messagePagination.total;
     } else {
-      chatMessages.value = [];
+      if (!isLoadMore) {
+        chatMessages.value = [];
+      }
+      messagePagination.hasMore = false;
     }
   } catch (error) {
     console.error('获取聊天消息失败:', error);
-    ElMessage.error('获取聊天消息失败');
-    chatMessages.value = [];
+    if (!isLoadMore) {
+      ElMessage.error('获取聊天消息失败');
+      chatMessages.value = [];
+    }
+    messagePagination.hasMore = false;
   } finally {
     messagesLoading.value = false;
-    scrollToBottom();
+    if (!isLoadMore) {
+      scrollToBottom();
+    }
   }
 };
 
@@ -319,8 +347,17 @@ const handleViewConversation = (row) => {
   currentConversation.value = row;
   chatTitle.value = `与用户 ${row.memberId} 的聊天`;
   chatMessages.value = [];
-  getChatMessages(row.id);
+  messagePagination.current = 1;
+  messagePagination.hasMore = true;
   chatDialogVisible.value = true;
+  // 对话框显示后再获取消息，确保滚动操作能生效
+  nextTick(() => {
+    getChatMessages(row.id);
+    // 添加滚动事件监听
+    if (chatMessagesRef.value) {
+      chatMessagesRef.value.addEventListener('scroll', handleMessageScroll);
+    }
+  });
 };
 
 // 发送消息
@@ -473,6 +510,17 @@ const handleTextInput = () => {
   }
 };
 
+// 处理消息区域滚动事件
+const handleMessageScroll = (event) => {
+  const { scrollTop } = event.target;
+  // 当滚动到顶部且还有更多消息时，加载下一页
+  if (scrollTop === 0 && messagePagination.hasMore && !messagesLoading.value) {
+    if (currentConversation.value) {
+      getChatMessages(currentConversation.value.id, true);
+    }
+  }
+};
+
 // 处理对话框键盘事件
 const handleDialogKeydown = (event) => {
   // 检查是否存在图片预览遮罩层
@@ -539,20 +587,27 @@ const handleWebSocketMessage = (message) => {
         console.log('店铺ID匹配');
         // 检查是否是当前会话的消息（通过买家ID匹配，注意类型转换）
         if (String(payload.from) === String(currentConversation.value.memberId)) {
-          console.log('买家ID匹配，添加消息到对话框');
-          // 本地添加消息
-          const newMessage = {
-            id: Date.now().toString(),
-            conversationId: currentConversation.value.id,
-            content: payload.content,
-            type: 'receive', // 买家发送的消息，显示为接收
-            msgType: payload.type, // 消息类型：1-文本，2-图片
-            createTime: new Date().toISOString(),
-            avatar: 'https://via.placeholder.com/40'
-          };
-          
-          chatMessages.value.push(newMessage);
-          scrollToBottom();
+          console.log('买家ID匹配');
+          // 检查to是否等于当前商家ID（注意类型转换）
+          // 假设当前商家ID为1，实际项目中可能需要从登录信息中获取
+          if (String(payload.to) === '1') {
+            console.log('商家ID匹配，添加消息到对话框');
+            // 本地添加消息
+            const newMessage = {
+              id: Date.now().toString(),
+              conversationId: currentConversation.value.id,
+              content: payload.content,
+              type: 'receive', // 买家发送的消息，显示为接收
+              msgType: payload.type, // 消息类型：1-文本，2-图片
+              createTime: new Date().toISOString(),
+              avatar: 'https://via.placeholder.com/40'
+            };
+            
+            chatMessages.value.push(newMessage);
+            scrollToBottom();
+          } else {
+            console.log('商家ID不匹配，忽略消息');
+          }
         } else {
           console.log('买家ID不匹配，忽略消息');
         }
@@ -625,6 +680,26 @@ onMounted(() => {
   overflow-y: auto;
   padding: 20px;
   background-color: #f5f7fa;
+  max-height: calc(70vh - 160px); /* 确保有足够的高度用于滚动 */
+  
+  /* 自定义滚动条样式 */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
 }
 
 .message-item {
