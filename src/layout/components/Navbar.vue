@@ -35,7 +35,7 @@
         <el-tooltip :content="'当前商家: ' + userStore.name" effect="dark" placement="bottom">
           <div class="info-item">
             <el-icon><shop /></el-icon>
-            <span class="shop-name">{{ getCurrentShopName() }}</span>
+            <span class="shop-name">{{ getCurrentShopName }}</span>
           </div>
         </el-tooltip>
       </div>
@@ -65,6 +65,7 @@
 </template>
 
 <script setup>
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { Shop } from '@element-plus/icons-vue'
 import Breadcrumb from '@/components/Breadcrumb'
@@ -84,8 +85,14 @@ const appStore = useAppStore()
 const userStore = useUserStore()
 const settingsStore = useSettingsStore()
 
+// 店铺信息更新触发
+const shopInfoUpdate = ref(0);
+
 // 获取当前店铺名称
-function getCurrentShopName() {
+const getCurrentShopName = computed(() => {
+  // 依赖于shopInfoUpdate，当它变化时会重新计算
+  shopInfoUpdate.value;
+  
   try {
     const currentShop = localStorage.getItem('currentShop');
     if (currentShop) {
@@ -96,7 +103,33 @@ function getCurrentShopName() {
     console.error('获取店铺信息失败:', e);
   }
   return '未选择店铺';
-}
+});
+
+// 监听storage变化
+const handleStorageChange = (event) => {
+  if (event.key === 'currentShop') {
+    // 当currentShop变化时，更新shopInfoUpdate以触发计算属性重新计算
+    shopInfoUpdate.value++;
+  }
+};
+
+// 监听自定义事件shopInfoUpdated
+const handleShopInfoUpdated = () => {
+  // 当接收到店铺信息更新事件时，更新shopInfoUpdate以触发计算属性重新计算
+  shopInfoUpdate.value++;
+};
+
+onMounted(() => {
+  // 挂载时添加事件监听器
+  window.addEventListener('storage', handleStorageChange);
+  window.addEventListener('shopInfoUpdated', handleShopInfoUpdated);
+});
+
+onUnmounted(() => {
+  // 卸载时移除事件监听器
+  window.removeEventListener('storage', handleStorageChange);
+  window.removeEventListener('shopInfoUpdated', handleShopInfoUpdated);
+});
 
 function toggleSideBar() {
   appStore.toggleSideBar()

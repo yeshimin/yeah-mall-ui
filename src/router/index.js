@@ -162,6 +162,19 @@ export const constantRoutes = [
         meta: { title: '客服消息', icon: 'message' }
       }
     ]
+  },
+  {
+    path: '/mall/settings',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mall/settings/index.vue'),
+        name: 'MallBasicSettings',
+        meta: { title: '基础设置', icon: 'settings' }
+      }
+    ]
   }
 ]
 
@@ -206,6 +219,20 @@ export const dynamicRoutes = [
         component: () => import('@/views/mall/cschat/index.vue'),
         name: 'MallCustomerService',
         meta: { title: '客服消息', noCache: true }
+      }
+    ]
+  },
+  {
+    path: '/mall/settings',
+    component: Layout,
+    permissions: ['mall:settings:list'],
+    meta: { title: '基础设置', icon: 'settings' },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/mall/settings/index.vue'),
+        name: 'MallBasicSettings',
+        meta: { title: '基础设置', noCache: true }
       }
     ]
   },
