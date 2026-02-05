@@ -90,12 +90,20 @@
             </div>
             <div class="message-content">
               <div class="message-bubble" :class="message.type === 'send' ? 'send' : 'receive'">
-                <template v-if="message.type === 'image'">
+                <template v-if="message.msgType === 2">
                   <el-image
-                    :src="message.content"
+                    :src="getFullImageUrl(message.content)"
                     fit="cover"
-                    style="max-width: 200px; max-height: 200px;"
-                  ></el-image>
+                    :style="{ width: '80px', height: '80px' }"
+                    :preview-src-list="[getFullImageUrl(message.content)]"
+                    preview-teleported
+                  >
+                    <template #error>
+                      <div class="image-slot">
+                        <el-icon><picture-filled /></el-icon>
+                      </div>
+                    </template>
+                  </el-image>
                 </template>
                 <template v-else>
                   {{ message.content }}
@@ -121,13 +129,38 @@
           >
             <el-button size="small" type="primary" icon="el-icon-picture-outline"></el-button>
           </el-upload>
-          <el-input
-            v-model="messageInput"
-            type="textarea"
-            placeholder="请输入消息内容"
-            :rows="3"
-            @keyup.enter.exact="handleSendMessage"
-          ></el-input>
+          
+          <div class="input-container">
+            <!-- 图片预览 -->
+            <div v-if="imagePreviewUrl" class="image-preview-in-input">
+              <el-image
+                :src="imagePreviewUrl"
+                fit="cover"
+                :style="{ width: '80px', height: '80px' }"
+              >
+                <template #error>
+                  <div class="image-slot">
+                    <el-icon><picture-filled /></el-icon>
+                  </div>
+                </template>
+              </el-image>
+              <el-button size="small" type="danger" @click="clearImage" style="position: absolute; top: -10px; right: -10px; padding: 0; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <el-icon><Close /></el-icon>
+                  </el-button>
+            </div>
+            
+            <!-- 文本输入框 -->
+            <el-input
+              v-model="messageInput"
+              type="textarea"
+              placeholder="请输入消息内容"
+              :rows="3"
+              :disabled="inputDisabled"
+              @input="handleTextInput"
+              @keyup.enter.exact="handleSendMessage"
+            ></el-input>
+          </div>
+          
           <el-button type="primary" @click="handleSendMessage" :loading="sending">发送</el-button>
         </div>
       </div>
@@ -137,14 +170,19 @@
 
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElIcon } from 'element-plus';
+import { PictureFilled, Close } from '@element-plus/icons-vue';
 import wsService from '@/utils/websocket';
+import { getToken } from '@/utils/auth';
 import { queryConversationList, queryConversationMessages } from '@/api/mall/cschat';
 
 const loading = ref(false);
 const messagesLoading = ref(false);
 const sending = ref(false);
 const chatMessagesRef = ref(null);
+const selectedImageFile = ref(null);
+const imagePreviewUrl = ref('');
+const inputDisabled = ref(false);
 
 const searchForm = reactive({
   status: '',
@@ -181,6 +219,21 @@ const formatTime = (time) => {
     minute: '2-digit',
     second: '2-digit'
   });
+};
+
+// 获取完整图片URL
+const getFullImageUrl = (fileKey) => {
+  if (!fileKey) return '';
+  
+  const env = import.meta.env.VITE_APP_ENV;
+  const baseApi = import.meta.env.VITE_APP_BASE_API || '';
+  
+  if (env === 'development') {
+    const proxyTarget = import.meta.env.VITE_APP_DEV_BACKEND_URL || 'http://localhost:8080';
+    return `${proxyTarget}/public/storage/preview?fileKey=${fileKey}`;
+  } else {
+    return `${baseApi}/public/storage/preview?fileKey=${fileKey}`;
+  }
 };
 
 // 滚动到底部
@@ -244,6 +297,7 @@ const getChatMessages = async (conversationId) => {
         conversationId: msg.conversationId,
         content: msg.msgContent,
         type: msg.msgDirection === 1 ? 'receive' : 'send', // 1-买家到商家（接收），2-商家到买家（发送）
+        msgType: msg.msgType, // 消息类型：1-文本，2-图片
         createTime: msg.createTime,
         avatar: 'https://via.placeholder.com/40'
       })).reverse();
@@ -270,47 +324,21 @@ const handleViewConversation = (row) => {
 };
 
 // 发送消息
-const handleSendMessage = () => {
-  if (!messageInput.value.trim()) {
+const handleSendMessage = async () => {
+  if (!messageInput.value.trim() && !selectedImageFile.value) {
     return;
   }
 
   sending.value = true;
 
   try {
-    // 构造WebSocket消息
-    const wsMessage = {
-      category: 'biz-handle',
-      command: 'cs-chat.mch',
-      subCmd: 'msg.mch2mem',
-      payload: {
-        shopId: localStorage.getItem('shopId') || '',
-        from: '1', // 当前商家的id
-        to: currentConversation.value.memberId, // 买家的id
-        content: messageInput.value,
-        type: 1 // 1表示文本消息
-      }
-    };
-
-    // 通过WebSocket发送消息
-    const success = wsService.send(wsMessage);
-    
-    if (success) {
-      // 本地添加消息
-      const newMessage = {
-        id: Date.now().toString(),
-        conversationId: currentConversation.value.id,
-        content: messageInput.value,
-        type: 'send',
-        createTime: new Date().toISOString(),
-        avatar: 'https://via.placeholder.com/40'
-      };
-
-      chatMessages.value.push(newMessage);
-      messageInput.value = '';
-      scrollToBottom();
-    } else {
-      ElMessage.error('发送消息失败，请检查网络连接');
+    // 如果有选中的图片文件，发送图片消息
+    if (selectedImageFile.value) {
+      await sendImageMessage();
+    } 
+    // 否则，发送文本消息
+    else if (messageInput.value.trim()) {
+      await sendTextMessage();
     }
   } catch (error) {
     console.error('发送消息失败:', error);
@@ -320,24 +348,9 @@ const handleSendMessage = () => {
   }
 };
 
-// 处理图片上传
-const handleImageUpload = (file) => {
-  // 模拟图片上传
-  const imageUrl = URL.createObjectURL(file.raw);
-  
-  const newMessage = {
-    id: Date.now().toString(),
-    conversationId: currentConversation.value.id,
-    content: imageUrl,
-    type: 'send',
-    createTime: new Date().toISOString(),
-    avatar: 'https://via.placeholder.com/40'
-  };
-
-  chatMessages.value.push(newMessage);
-  scrollToBottom();
-
-  // 通过WebSocket发送图片消息
+// 发送文本消息
+const sendTextMessage = async () => {
+  // 构造WebSocket消息
   const wsMessage = {
     category: 'biz-handle',
     command: 'cs-chat.mch',
@@ -346,11 +359,118 @@ const handleImageUpload = (file) => {
       shopId: localStorage.getItem('shopId') || '',
       from: '1', // 当前商家的id
       to: currentConversation.value.memberId, // 买家的id
-      content: imageUrl, // 图片URL
-      type: 2 // 2表示图片消息
+      content: messageInput.value,
+      type: 1 // 1表示文本消息
     }
   };
-  wsService.send(wsMessage);
+
+  // 通过WebSocket发送消息
+  const success = wsService.send(wsMessage);
+  
+  if (success) {
+    // 本地添加消息
+    const newMessage = {
+      id: Date.now().toString(),
+      conversationId: currentConversation.value.id,
+      content: messageInput.value,
+      type: 'send',
+      msgType: 1, // 消息类型：1-文本
+      createTime: new Date().toISOString(),
+      avatar: 'https://via.placeholder.com/40'
+    };
+
+    chatMessages.value.push(newMessage);
+    messageInput.value = '';
+    scrollToBottom();
+  } else {
+    ElMessage.error('发送消息失败，请检查网络连接');
+  }
+};
+
+// 发送图片消息
+const sendImageMessage = async () => {
+  const file = selectedImageFile.value;
+  
+  // 创建FormData对象
+  const formData = new FormData();
+  formData.append('file', file.raw);
+  
+  // 调用上传接口
+  const response = await fetch('/dev-api/mch/storage/upload', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${getToken()}`
+    },
+    body: formData
+  });
+  
+  const result = await response.json();
+  
+  if (result.code === 0 && result.data && result.data.fileKey) {
+    const fileKey = result.data.fileKey;
+    
+    // 本地添加消息
+    const newMessage = {
+      id: Date.now().toString(),
+      conversationId: currentConversation.value.id,
+      content: fileKey, // 使用fileKey作为内容
+      type: 'send',
+      msgType: 2, // 消息类型：2-图片
+      createTime: new Date().toISOString(),
+      avatar: 'https://via.placeholder.com/40'
+    };
+
+    chatMessages.value.push(newMessage);
+    selectedImageFile.value = null; // 清空选中的图片
+    imagePreviewUrl.value = ''; // 清空图片预览
+    inputDisabled.value = false; // 重新启用输入框
+    scrollToBottom();
+
+    // 通过WebSocket发送图片消息
+    const wsMessage = {
+      category: 'biz-handle',
+      command: 'cs-chat.mch',
+      subCmd: 'msg.mch2mem',
+      payload: {
+        shopId: localStorage.getItem('shopId') || '',
+        from: '1', // 当前商家的id
+        to: currentConversation.value.memberId, // 买家的id
+        content: fileKey, // 使用fileKey作为内容
+        type: 2 // 2表示图片消息
+      }
+    };
+    wsService.send(wsMessage);
+  } else {
+    ElMessage.error('图片上传失败');
+  }
+};
+
+// 处理图片选择
+const handleImageUpload = (file) => {
+  selectedImageFile.value = file;
+  // 生成图片预览URL
+  imagePreviewUrl.value = URL.createObjectURL(file.raw);
+  // 清空文本输入框，确保图片和文本不可同时存在
+  messageInput.value = '';
+  // 禁用输入框
+  inputDisabled.value = true;
+  ElMessage.success('图片已选择，点击发送按钮发送');
+};
+
+// 清除图片
+const clearImage = () => {
+  selectedImageFile.value = null;
+  imagePreviewUrl.value = '';
+  // 重新启用输入框
+  inputDisabled.value = false;
+};
+
+// 处理文本输入
+const handleTextInput = () => {
+  // 如果输入文本，清除图片选择
+  if (messageInput.value.trim() && selectedImageFile.value) {
+    clearImage();
+  }
 };
 
 // 搜索
@@ -416,6 +536,7 @@ const handleWebSocketMessage = (message) => {
             conversationId: currentConversation.value.id,
             content: payload.content,
             type: 'receive', // 买家发送的消息，显示为接收
+            msgType: payload.type, // 消息类型：1-文本，2-图片
             createTime: new Date().toISOString(),
             avatar: 'https://via.placeholder.com/40'
           };
@@ -542,6 +663,22 @@ onMounted(() => {
     color: #303133;
     border-bottom-left-radius: 4px;
   }
+
+  /* 确保图片在聊天框中保持较小尺寸，禁用悬停放大效果 */
+  :deep(.el-image) {
+    border-radius: 4px !important;
+    box-shadow: none !important;
+    width: 80px !important;
+    height: 80px !important;
+    
+    .el-image__inner {
+      transition: none !important;
+      transform: none !important;
+      cursor: pointer !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
+  }
 }
 
 .no-messages {
@@ -563,6 +700,23 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+.input-container {
+  flex: 1;
+  position: relative;
+  min-height: 80px;
+}
+
+.image-preview-in-input {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  display: inline-block;
+  position: relative;
+  margin-right: 10px;
+  margin-bottom: 10px;
+}
+
 .el-input {
   flex: 1;
   min-height: 80px;
@@ -571,6 +725,11 @@ onMounted(() => {
 .el-textarea__inner {
   resize: none;
   min-height: 80px;
+}
+
+/* 确保文本输入时图片被清除 */
+textarea:focus {
+  outline: none;
 }
 
 .no-messages {
