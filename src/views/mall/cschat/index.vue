@@ -81,13 +81,7 @@
         <!-- 聊天记录 -->
         <div class="chat-messages" ref="chatMessagesRef" v-loading="messagesLoading">
           <div v-for="(message, index) in chatMessages" :key="index" :class="['message-item', message.type === 'send' ? 'send' : 'receive']">
-            <div class="message-avatar" v-if="message.avatar">
-              <el-image
-                :src="message.avatar"
-                fit="cover"
-                style="width: 36px; height: 36px; border-radius: 50%;"
-              ></el-image>
-            </div>
+            <!-- 头像部分已移除 -->
             <div class="message-content">
               <div class="message-bubble" :class="message.type === 'send' ? 'send' : 'receive'">
                 <template v-if="message.msgType === 2">
@@ -305,8 +299,7 @@ const getChatMessages = async (conversationId, isLoadMore = false) => {
         content: msg.msgContent,
         type: msg.msgDirection === 1 ? 'receive' : 'send', // 1-买家到商家（接收），2-商家到买家（发送）
         msgType: msg.msgType, // 消息类型：1-文本，2-图片
-        createTime: msg.createTime,
-        avatar: 'https://via.placeholder.com/40'
+        createTime: msg.createTime
       }));
       
       if (isLoadMore) {
@@ -393,9 +386,7 @@ const sendTextMessage = async () => {
     command: 'cs-chat.mch',
     subCmd: 'msg.mch2mem',
     payload: {
-      shopId: localStorage.getItem('shopId') || '',
-      from: '1', // 当前商家的id
-      to: currentConversation.value.memberId, // 买家的id
+      conversationId: currentConversation.value.id,
       content: messageInput.value,
       type: 1 // 1表示文本消息
     }
@@ -412,8 +403,7 @@ const sendTextMessage = async () => {
       content: messageInput.value,
       type: 'send',
       msgType: 1, // 消息类型：1-文本
-      createTime: new Date().toISOString(),
-      avatar: 'https://via.placeholder.com/40'
+      createTime: new Date().toISOString()
     };
 
     chatMessages.value.push(newMessage);
@@ -453,8 +443,7 @@ const sendImageMessage = async () => {
       content: fileKey, // 使用fileKey作为内容
       type: 'send',
       msgType: 2, // 消息类型：2-图片
-      createTime: new Date().toISOString(),
-      avatar: 'https://via.placeholder.com/40'
+      createTime: new Date().toISOString()
     };
 
     chatMessages.value.push(newMessage);
@@ -469,9 +458,7 @@ const sendImageMessage = async () => {
       command: 'cs-chat.mch',
       subCmd: 'msg.mch2mem',
       payload: {
-        shopId: localStorage.getItem('shopId') || '',
-        from: '1', // 当前商家的id
-        to: currentConversation.value.memberId, // 买家的id
+        conversationId: currentConversation.value.id,
         content: fileKey, // 使用fileKey作为内容
         type: 2 // 2表示图片消息
       }
@@ -574,45 +561,28 @@ const handleWebSocketMessage = (message) => {
     const payload = message.payload;
     console.log('处理买家消息，payload:', payload);
     console.log('当前会话:', currentConversation.value);
-    console.log('本地shopId:', localStorage.getItem('shopId'));
     
     if (payload && currentConversation.value) {
-      console.log('payload.shopId:', payload.shopId);
-      console.log('localStorage.shopId:', localStorage.getItem('shopId'));
-      console.log('payload.from:', payload.from);
-      console.log('currentConversation.memberId:', currentConversation.value.memberId);
+      console.log('payload.conversationId:', payload.conversationId);
+      console.log('currentConversation.id:', currentConversation.value.id);
       
-      // 检查shopId是否匹配（注意类型转换）
-      if (String(payload.shopId) === String(localStorage.getItem('shopId'))) {
-        console.log('店铺ID匹配');
-        // 检查是否是当前会话的消息（通过买家ID匹配，注意类型转换）
-        if (String(payload.from) === String(currentConversation.value.memberId)) {
-          console.log('买家ID匹配');
-          // 检查to是否等于当前商家ID（注意类型转换）
-          // 假设当前商家ID为1，实际项目中可能需要从登录信息中获取
-          if (String(payload.to) === '1') {
-            console.log('商家ID匹配，添加消息到对话框');
-            // 本地添加消息
+      // 检查是否是当前会话的消息（通过会话ID匹配，注意类型转换）
+      if (String(payload.conversationId) === String(currentConversation.value.id)) {
+        console.log('会话ID匹配，添加消息到对话框');
+        // 本地添加消息
             const newMessage = {
               id: Date.now().toString(),
-              conversationId: currentConversation.value.id,
+              conversationId: payload.conversationId,
               content: payload.content,
               type: 'receive', // 买家发送的消息，显示为接收
               msgType: payload.type, // 消息类型：1-文本，2-图片
-              createTime: new Date().toISOString(),
-              avatar: 'https://via.placeholder.com/40'
+              createTime: new Date().toISOString()
             };
-            
-            chatMessages.value.push(newMessage);
-            scrollToBottom();
-          } else {
-            console.log('商家ID不匹配，忽略消息');
-          }
-        } else {
-          console.log('买家ID不匹配，忽略消息');
-        }
+        
+        chatMessages.value.push(newMessage);
+        scrollToBottom();
       } else {
-        console.log('店铺ID不匹配，忽略消息');
+        console.log('会话ID不匹配，忽略消息');
       }
     } else {
       console.log('payload或currentConversation为空，忽略消息');
