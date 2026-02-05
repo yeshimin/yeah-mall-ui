@@ -76,7 +76,7 @@
     </el-card>
 
     <!-- 聊天对话框 -->
-    <el-dialog v-model="chatDialogVisible" :title="chatTitle" width="800px" height="70vh">
+    <el-dialog v-model="chatDialogVisible" :title="chatTitle" width="800px" height="70vh" :close-on-press-escape="false" @keydown.esc="handleDialogKeydown">
       <div class="chat-dialog">
         <!-- 聊天记录 -->
         <div class="chat-messages" ref="chatMessagesRef" v-loading="messagesLoading">
@@ -470,6 +470,16 @@ const handleTextInput = () => {
   // 如果输入文本，清除图片选择
   if (messageInput.value.trim() && selectedImageFile.value) {
     clearImage();
+  }
+};
+
+// 处理对话框键盘事件
+const handleDialogKeydown = (event) => {
+  // 检查是否存在图片预览遮罩层
+  const imagePreviewMask = document.querySelector('.el-image-viewer__mask');
+  if (!imagePreviewMask) {
+    // 如果没有图片预览，关闭对话框
+    chatDialogVisible.value = false;
   }
 };
 
