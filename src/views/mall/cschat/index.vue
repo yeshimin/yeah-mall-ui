@@ -81,8 +81,27 @@
         <!-- 聊天记录 -->
         <div class="chat-messages" ref="chatMessagesRef" v-loading="messagesLoading">
           <div v-for="(message, index) in chatMessages" :key="index" :class="['message-item', message.type === 'send' ? 'send' : 'receive']">
-            <!-- 头像部分已移除 -->
+            <!-- 头像 -->
+            <div class="message-avatar">
+              <el-image
+                :src="message.type === 'send' ? getFullImageUrl(conversationDetail.mchAvatar) : getFullImageUrl(conversationDetail.memberAvatar)"
+                fit="cover"
+                style="width: 36px; height: 36px; border-radius: 50%;"
+              >
+                <template #error>
+                  <div class="image-slot">
+                    <el-icon><user /></el-icon>
+                  </div>
+                </template>
+              </el-image>
+            </div>
+            
             <div class="message-content">
+              <!-- 昵称 -->
+              <div class="message-nickname" :class="message.type === 'send' ? 'send' : 'receive'">
+                {{ message.type === 'send' ? conversationDetail.mchNickname : conversationDetail.memberNickname }}
+              </div>
+              
               <div class="message-bubble" :class="message.type === 'send' ? 'send' : 'receive'">
                 <template v-if="message.msgType === 2">
                   <el-image
@@ -165,7 +184,7 @@
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue';
 import { ElMessage, ElIcon } from 'element-plus';
-import { PictureFilled, Close } from '@element-plus/icons-vue';
+import { PictureFilled, Close, User } from '@element-plus/icons-vue';
 import wsService from '@/utils/websocket';
 import { getToken } from '@/utils/auth';
 import { queryConversationList, queryConversationMessages } from '@/api/mall/cschat';
@@ -175,13 +194,24 @@ const messagesLoading = ref(false);
 const sending = ref(false);
 const chatMessagesRef = ref(null);
 const selectedImageFile = ref(null);
-const imagePreviewUrl = ref('');
+const imagePreviewUrl = ref(null);
 const inputDisabled = ref(false);
 const messagePagination = reactive({
   current: 1,
   pageSize: 50,
   total: 0,
   hasMore: true
+});
+const conversationDetail = ref({
+  memberId: '',
+  memberNickname: '',
+  memberAvatar: '',
+  mchId: '',
+  mchNickname: '',
+  mchAvatar: '',
+  shopId: '',
+  shopName: '',
+  shopLogo: ''
 });
 
 const searchForm = reactive({
@@ -335,14 +365,50 @@ const getChatMessages = async (conversationId, isLoadMore = false) => {
   }
 };
 
+// 获取会话详细信息
+const getConversationDetail = async (conversationId) => {
+  try {
+    const response = await fetch('/dev-api/mch/csConversation/init', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ id: conversationId })
+    });
+    
+    const result = await response.json();
+    
+    if (result.code === 0 && result.data) {
+      conversationDetail.value = result.data;
+      return result.data;
+    } else {
+      console.error('获取会话详细信息失败:', result.message);
+      return null;
+    }
+  } catch (error) {
+    console.error('获取会话详细信息失败:', error);
+    return null;
+  }
+};
+
 // 查看聊天
-const handleViewConversation = (row) => {
+const handleViewConversation = async (row) => {
   currentConversation.value = row;
-  chatTitle.value = `与用户 ${row.memberId} 的聊天`;
   chatMessages.value = [];
   messagePagination.current = 1;
   messagePagination.hasMore = true;
+  
+  // 获取会话详细信息
+  const detail = await getConversationDetail(row.id);
+  if (detail) {
+    chatTitle.value = `与用户 ${detail.memberNickname || row.memberId} 的聊天`;
+  } else {
+    chatTitle.value = `与用户 ${row.memberId} 的聊天`;
+  }
+  
   chatDialogVisible.value = true;
+  
   // 对话框显示后再获取消息，确保滚动操作能生效
   nextTick(() => {
     getChatMessages(row.id);
@@ -699,6 +765,20 @@ onMounted(() => {
 
   &.receive {
     align-items: flex-start;
+  }
+}
+
+.message-nickname {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 4px;
+
+  &.send {
+    text-align: right;
+  }
+
+  &.receive {
+    text-align: left;
   }
 }
 
