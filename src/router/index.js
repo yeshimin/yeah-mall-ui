@@ -180,59 +180,53 @@ export const constantRoutes = [
 
 // 动态路由，基于用户权限动态去加载
 export const dynamicRoutes = [
+  // 商城管理一级菜单
   {
-    path: '/mall/shipping',
+    path: '/mall',
     component: Layout,
-    permissions: ['mall:shipping:list'],
-    meta: { title: '发货信息设置', icon: 'truck' },
+    permissions: ['mall:list'],
+    meta: { title: '商城管理', icon: 'shopping-mall' },
+    alwaysShow: true,
     children: [
+      // 发货信息设置
       {
-        path: '',
+        path: 'shipping',
         component: () => import('@/views/mall/shipping/index.vue'),
+        permissions: ['mall:shipping:list'],
         name: 'MallShippingSettings',
-        meta: { title: '发货信息设置', noCache: true }
-      }
-    ]
-  },
-  {
-    path: '/mall/order',
-    component: Layout,
-    permissions: ['mall:order:list'],
-    meta: { title: '订单管理', icon: 'shopping-cart' },
-    children: [
+        meta: { title: '发货信息设置', icon: 'truck', noCache: true }
+      },
+      // 订单管理
       {
-        path: '',
+        path: 'order',
         component: () => import('@/views/mall/order/index.vue'),
+        permissions: ['mall:order:list'],
         name: 'MallOrderManagement',
-        meta: { title: '订单管理', noCache: true }
-      }
-    ]
-  },
-  {
-    path: '/mall/cschat',
-    component: Layout,
-    permissions: ['mall:cschat:list'],
-    meta: { title: '客服消息', icon: 'message' },
-    children: [
+        meta: { title: '订单管理', icon: 'shopping-cart', noCache: true }
+      },
+      // 客服消息
       {
-        path: '',
+        path: 'cschat',
         component: () => import('@/views/mall/cschat/index.vue'),
+        permissions: ['mall:cschat:list'],
         name: 'MallCustomerService',
-        meta: { title: '客服消息', noCache: true }
-      }
-    ]
-  },
-  {
-    path: '/mall/settings',
-    component: Layout,
-    permissions: ['mall:settings:list'],
-    meta: { title: '基础设置', icon: 'settings' },
-    children: [
+        meta: { title: '客服消息', icon: 'message', noCache: true }
+      },
+      // 基础设置
       {
-        path: '',
+        path: 'settings',
         component: () => import('@/views/mall/settings/index.vue'),
+        permissions: ['mall:settings:list'],
         name: 'MallBasicSettings',
-        meta: { title: '基础设置', noCache: true }
+        meta: { title: '基础设置', icon: 'settings', noCache: true }
+      },
+      // 平台Banner管理
+      {
+        path: 'platBanner',
+        component: () => import('@/views/mall/platBanner/index.vue'),
+        permissions: ['mall:platBanner:list'],
+        name: 'MallPlatBanner',
+        meta: { title: '平台Banner管理', icon: 'picture', noCache: true }
       }
     ]
   },

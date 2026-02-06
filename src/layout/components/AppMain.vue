@@ -14,6 +14,9 @@
 <script setup>
 import iframeToggle from "./IframeToggle/index"
 import useTagsViewStore from '@/store/modules/tagsView'
+import { onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { watchEffect } from 'vue'
 
 const route = useRoute()
 const tagsViewStore = useTagsViewStore()
@@ -22,7 +25,7 @@ onMounted(() => {
   addIframe()
 })
 
-watch((route) => {
+watchEffect(() => {
   addIframe()
 })
 
