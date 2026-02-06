@@ -4,7 +4,7 @@ import request from '@/utils/request'
 export function queryConversationList(params) {
   const shopId = localStorage.getItem('shopId') || '';
   return request({
-    url: `/mch/csConversation/crud/query`,
+    url: `/mch/csConversation/query`,
     method: 'get',
     params: {
       ...params,

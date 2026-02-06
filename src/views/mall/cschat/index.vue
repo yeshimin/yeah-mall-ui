@@ -35,22 +35,30 @@
         <el-table-column label="用户信息" min-width="200">
           <template #default="scope">
             <div class="user-info">
-              <div class="user-name">用户 {{ scope.row.memberId }}</div>
               <div class="user-avatar">
                 <el-image
-                  src="https://via.placeholder.com/40"
+                  :src="getFullImageUrl(scope.row.memberAvatar)"
                   fit="cover"
                   style="width: 40px; height: 40px; border-radius: 50%;"
-                ></el-image>
+                >
+                  <template #error>
+                    <div class="image-slot">
+                      <el-icon><user /></el-icon>
+                    </div>
+                  </template>
+                </el-image>
               </div>
+              <div class="user-name">{{ scope.row.memberNickname || `用户 ${scope.row.memberId}` }}</div>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="会话信息" min-width="300">
           <template #default="scope">
             <div class="last-message">
-              <div class="message-content">创建时间：{{ formatTime(scope.row.createTime) }}</div>
-              <div class="message-time">更新时间：{{ formatTime(scope.row.updateTime) }}</div>
+              <div class="message-content">{{ scope.row.lastMessage || '暂无消息' }}</div>
+              <div class="message-time">
+                最后消息时间：{{ scope.row.lastMessageTime ? formatTime(scope.row.lastMessageTime) : '无' }}
+              </div>
             </div>
           </template>
         </el-table-column>
@@ -280,14 +288,11 @@ const getConversationList = async () => {
   try {
     loading.value = true;
     
-    const sortField = sortConfig.prop;
-    const sortOrder = sortConfig.order;
-    const conditions_ = `${sortField}:sort:${sortOrder}`;
-    
     const params = {
       current: pagination.current,
       size: pagination.pageSize,
-      conditions_
+      // 可以根据需要添加其他参数，如memberNickname、lastMessage等
+      // 这里暂时只传递分页参数
     };
     
     const response = await queryConversationList(params);
