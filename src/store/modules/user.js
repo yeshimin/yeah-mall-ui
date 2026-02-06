@@ -56,7 +56,25 @@ const useUserStore = defineStore(
             const user = res.data.user
             let avatar = user.avatar || ""
             if (!isHttp(avatar)) {
-              avatar = (isEmpty(avatar)) ? defAva : import.meta.env.VITE_APP_BASE_API + avatar
+              if (isEmpty(avatar)) {
+                avatar = defAva
+              } else {
+                // 对于商家端的头像，使用 /public/storage/preview?fileKey=xxx 格式
+                if (loginType === 'merchant') {
+                  const env = import.meta.env.VITE_APP_ENV;
+                  const baseApi = import.meta.env.VITE_APP_BASE_API || '';
+                  
+                  if (env === 'development') {
+                    const proxyTarget = import.meta.env.VITE_APP_DEV_BACKEND_URL || 'http://localhost:8080';
+                    avatar = `${proxyTarget}/public/storage/preview?fileKey=${avatar}`;
+                  } else {
+                    avatar = `${baseApi}/public/storage/preview?fileKey=${avatar}`;
+                  }
+                } else {
+                  // 对于管理员端，保持原逻辑
+                  avatar = import.meta.env.VITE_APP_BASE_API + avatar
+                }
+              }
             }
             if (res.data.roles && res.data.roles.length > 0) { // 验证返回的roles是否是一个非空数组
               this.roles = res.data.roles
