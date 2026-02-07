@@ -227,6 +227,14 @@ export const dynamicRoutes = [
         permissions: ['mall:platBanner:list'],
         name: 'MallPlatBanner',
         meta: { title: '平台Banner管理', icon: 'picture', noCache: true }
+      },
+      // 金刚区管理
+      {
+        path: 'quickEntry',
+        component: () => import('@/views/mall/quickEntry/index.vue'),
+        permissions: ['mall:quickEntry:list'],
+        name: 'MallQuickEntry',
+        meta: { title: '金刚区管理', icon: 'grid', noCache: true }
       }
     ]
   },
