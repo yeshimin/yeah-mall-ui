@@ -9,15 +9,15 @@
           style="width: 240px"
         />
       </el-form-item>
-      <el-form-item label="状态" prop="status">
+      <el-form-item label="状态" prop="isEnabled">
         <el-select
-          v-model="queryParams.status"
+          v-model="queryParams.isEnabled"
           placeholder="请选择状态"
           clearable
           style="width: 120px"
         >
-          <el-option label="启用" value="1" />
-          <el-option label="禁用" value="0" />
+          <el-option label="启用" value="true" />
+          <el-option label="禁用" value="false" />
         </el-select>
       </el-form-item>
       <el-form-item>
@@ -48,14 +48,14 @@
           <ImagePreview :src="getFullImageUrl(scope.row.icon)" :width="40" :height="40" />
         </template>
       </el-table-column>
-      <el-table-column prop="linkUrl" label="链接地址" align="center" />
+      <el-table-column prop="target" label="链接地址" align="center" />
       <el-table-column prop="sort" label="排序" align="center" />
-      <el-table-column prop="status" label="状态" align="center">
+      <el-table-column prop="isEnabled" label="状态" align="center">
         <template #default="scope">
           <el-switch
-            v-model="scope.row.status"
-            active-value="1"
-            inactive-value="0"
+            v-model="scope.row.isEnabled"
+            :active-value="true"
+            :inactive-value="false"
             @change="handleStatusChange(scope.row)"
           />
         </template>
@@ -83,24 +83,25 @@
         <el-form-item label="入口名称" prop="name">
           <el-input v-model="createForm.name" placeholder="请输入入口名称" />
         </el-form-item>
-        <el-form-item label="链接地址" prop="linkUrl">
-          <el-input v-model="createForm.linkUrl" placeholder="请输入链接地址" />
+        <el-form-item label="链接地址" prop="target">
+          <el-input v-model="createForm.target" placeholder="请输入链接地址" />
         </el-form-item>
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="createForm.sort" :min="0" :max="999" placeholder="请输入排序" />
         </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-switch v-model="createForm.status" active-value="1" inactive-value="0" />
+        <el-form-item label="状态" prop="isEnabled">
+          <el-switch v-model="createForm.isEnabled" :active-value="true" :inactive-value="false" />
         </el-form-item>
         <el-form-item label="图标" prop="icon">
-          <input type="file" ref="fileInputRef" @change="handleFileSelect" accept="image/*" />
-          <div class="el-upload__tip">
-            只能上传jpg/png文件，且不超过2MB
-          </div>
-          <div v-if="fileList.length > 0" class="file-list">
-            <span>{{ fileList[0].name }}</span>
-            <el-button type="danger" link @click="handleFileRemove">删除</el-button>
-          </div>
+          <FileUpload
+            v-model:modelValue="createForm.icon"
+            :fileType="['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']"
+            :fileSize="2"
+            :limit="1"
+          />
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="createForm.remark" placeholder="请输入备注信息" type="textarea" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -114,28 +115,28 @@
         <el-form-item label="入口名称" prop="name">
           <el-input v-model="editForm.name" placeholder="请输入入口名称" />
         </el-form-item>
-        <el-form-item label="链接地址" prop="linkUrl">
-          <el-input v-model="editForm.linkUrl" placeholder="请输入链接地址" />
+        <el-form-item label="链接地址" prop="target">
+          <el-input v-model="editForm.target" placeholder="请输入链接地址" />
         </el-form-item>
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="editForm.sort" :min="0" :max="999" placeholder="请输入排序" />
         </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-switch v-model="editForm.status" active-value="1" inactive-value="0" />
+        <el-form-item label="状态" prop="isEnabled">
+          <el-switch v-model="editForm.isEnabled" :active-value="true" :inactive-value="false" />
         </el-form-item>
         <el-form-item label="图标" prop="icon">
-          <input type="file" ref="editFileInputRef" @change="handleEditFileSelect" accept="image/*" />
-          <div class="el-upload__tip">
-            只能上传jpg/png文件，且不超过2MB
-          </div>
-          <div v-if="editFileList.length > 0" class="file-list">
-            <span>{{ editFileList[0].name }}</span>
-            <el-button type="danger" link @click="handleEditFileRemove">删除</el-button>
-          </div>
-          <div v-else-if="editForm.icon" class="current-icon">
+          <FileUpload
+            v-model:modelValue="editForm.icon"
+            :fileType="['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']"
+            :fileSize="2"
+            :limit="1"
+          />
+          <div v-if="editForm.icon" class="current-icon">
             <ImagePreview :src="getFullImageUrl(editForm.icon)" :width="60" :height="60" />
-            <el-button type="text" @click="clearCurrentIcon">清除当前图标</el-button>
           </div>
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="editForm.remark" placeholder="请输入备注信息" type="textarea" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -150,91 +151,9 @@
 import { ref, computed, onMounted } from 'vue'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
+import FileUpload from '@/components/FileUpload/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-
-// 模拟数据
-const mockQuickEntries = [
-  {
-    id: 1,
-    name: '商品分类',
-    icon: 'category_icon',
-    linkUrl: '/category',
-    sort: 1,
-    status: '1',
-    createTime: '2026-02-01 10:00:00',
-    updateTime: '2026-02-01 10:00:00'
-  },
-  {
-    id: 2,
-    name: '热门商品',
-    icon: 'hot_icon',
-    linkUrl: '/hot',
-    sort: 2,
-    status: '1',
-    createTime: '2026-02-01 10:00:00',
-    updateTime: '2026-02-01 10:00:00'
-  },
-  {
-    id: 3,
-    name: '优惠活动',
-    icon: 'activity_icon',
-    linkUrl: '/activity',
-    sort: 3,
-    status: '1',
-    createTime: '2026-02-01 10:00:00',
-    updateTime: '2026-02-01 10:00:00'
-  },
-  {
-    id: 4,
-    name: '个人中心',
-    icon: 'user_icon',
-    linkUrl: '/user',
-    sort: 4,
-    status: '0',
-    createTime: '2026-02-01 10:00:00',
-    updateTime: '2026-02-01 10:00:00'
-  },
-  {
-    id: 5,
-    name: '购物车',
-    icon: 'cart_icon',
-    linkUrl: '/cart',
-    sort: 5,
-    status: '1',
-    createTime: '2026-02-01 10:00:00',
-    updateTime: '2026-02-01 10:00:00'
-  },
-  {
-    id: 6,
-    name: '订单管理',
-    icon: 'order_icon',
-    linkUrl: '/order',
-    sort: 6,
-    status: '1',
-    createTime: '2026-02-01 10:00:00',
-    updateTime: '2026-02-01 10:00:00'
-  },
-  {
-    id: 7,
-    name: '客服中心',
-    icon: 'service_icon',
-    linkUrl: '/service',
-    sort: 7,
-    status: '0',
-    createTime: '2026-02-01 10:00:00',
-    updateTime: '2026-02-01 10:00:00'
-  },
-  {
-    id: 8,
-    name: '设置',
-    icon: 'setting_icon',
-    linkUrl: '/setting',
-    sort: 8,
-    status: '1',
-    createTime: '2026-02-01 10:00:00',
-    updateTime: '2026-02-01 10:00:00'
-  }
-]
+import { createQuickEntry, updateQuickEntry, deleteQuickEntry, queryQuickEntryList } from '@/api/mall/quickEntry'
 
 const tableData = ref([])
 const loading = ref(false)
@@ -246,34 +165,26 @@ const multiple = ref(true)
 const total = ref(0)
 const queryParams = ref({
   name: '',
-  status: '',
+  isEnabled: '',
   current: 1,
   size: 10
 })
 
 const createDialogVisible = ref(false)
-const createForm = ref({ name: '', linkUrl: '', sort: 0, status: '1' })
+const createForm = ref({ name: '', target: '', sort: 0, isEnabled: true, icon: '', remark: '' })
 const createFormRules = {
   name: [ { required: true, message: '请输入入口名称', trigger: 'blur' } ],
-  linkUrl: [ { required: true, message: '请输入链接地址', trigger: 'blur' } ],
-  sort: [ { required: true, message: '请输入排序', trigger: 'blur' } ]
+  sort: [ { required: true, message: '请输入排序', trigger: 'blur' } ],
+  icon: [ { required: true, message: '请输入图标文件ID', trigger: 'blur' } ]
 }
-
-// 文件上传相关
-const fileInputRef = ref()
-const fileList = ref([])
 
 const editDialogVisible = ref(false)
-const editForm = ref({ id: '', name: '', linkUrl: '', sort: 0, status: '1', icon: '' })
+const editForm = ref({ id: '', name: '', target: '', sort: 0, isEnabled: true, icon: '', remark: '' })
 const editFormRules = {
   name: [ { required: true, message: '请输入入口名称', trigger: 'blur' } ],
-  linkUrl: [ { required: true, message: '请输入链接地址', trigger: 'blur' } ],
-  sort: [ { required: true, message: '请输入排序', trigger: 'blur' } ]
+  sort: [ { required: true, message: '请输入排序', trigger: 'blur' } ],
+  icon: [ { required: true, message: '请输入图标文件ID', trigger: 'blur' } ]
 }
-
-// 编辑文件上传相关
-const editFileInputRef = ref()
-const editFileList = ref([])
 
 const filteredTableData = computed(() => tableData.value)
 
@@ -281,8 +192,8 @@ const filteredTableData = computed(() => tableData.value)
 function getFullImageUrl(fileKey) {
   if (!fileKey) return ''
   
-  // 模拟图片URL，使用占位符图片
-  return `https://via.placeholder.com/40?text=${fileKey}`
+  // 使用真实的图片预览接口，只返回相对路径
+  return `/public/storage/preview?fileKey=${fileKey}`
 }
 
 function handleQuery() {
@@ -291,7 +202,7 @@ function handleQuery() {
 }
 function resetQuery() {
   queryParams.value.name = ''
-  queryParams.value.status = ''
+  queryParams.value.isEnabled = ''
   handleQuery()
 }
 function handleSelectionChange(selection) {
@@ -301,122 +212,29 @@ function handleSelectionChange(selection) {
   multiple.value = !selection.length
 }
 
-// 文件上传处理函数
-function handleFileSelect(event) {
-  const file = event.target.files[0]
-  if (!file) return
-  
-  // 验证文件类型和大小
-  const isImage = file.type.startsWith('image/')
-  // 支持的图片格式扩展名
-  const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']
-  const fileExtension = file.name.split('.').pop().toLowerCase()
-  const isAllowedExtension = allowedExtensions.includes(fileExtension)
-  const isLt2M = file.size / 1024 / 1024 < 2
-  
-  if (!isImage && !isAllowedExtension) {
-    ElMessage.error('只能上传图片文件(JPG, JPEG, PNG, GIF, BMP, WebP, SVG)!')
-    return false
-  }
-  
-  if (!isLt2M) {
-    ElMessage.error('上传图片大小不能超过 2MB!')
-    return false
-  }
-  
-  // 保存文件到列表
-  fileList.value = [file]
-}
-
-function handleFileRemove() {
-  fileList.value = []
-  // 清空文件输入框
-  if (fileInputRef.value) {
-    fileInputRef.value.value = ''
-  }
-}
-
-// 编辑文件上传处理函数
-function handleEditFileSelect(event) {
-  const file = event.target.files[0]
-  if (!file) return
-  
-  // 验证文件类型和大小
-  const isImage = file.type.startsWith('image/')
-  // 支持的图片格式扩展名
-  const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']
-  const fileExtension = file.name.split('.').pop().toLowerCase()
-  const isAllowedExtension = allowedExtensions.includes(fileExtension)
-  const isLt2M = file.size / 1024 / 1024 < 2
-  
-  if (!isImage && !isAllowedExtension) {
-    ElMessage.error('只能上传图片文件(JPG, JPEG, PNG, GIF, BMP, WebP, SVG)!')
-    return false
-  }
-  
-  if (!isLt2M) {
-    ElMessage.error('上传图片大小不能超过 2MB!')
-    return false
-  }
-  
-  // 保存文件到列表
-  editFileList.value = [file]
-}
-
-function handleEditFileRemove() {
-  editFileList.value = []
-  // 清空文件输入框
-  if (editFileInputRef.value) {
-    editFileInputRef.value.value = ''
-  }
-}
-
-function clearCurrentIcon() {
-  editForm.value.icon = ''
-}
-
 function handleAdd() {
-  createForm.value = { name: '', linkUrl: '', sort: 0, status: '1' }
-  fileList.value = []
-  // 清空文件输入框
-  if (fileInputRef.value) {
-    fileInputRef.value.value = ''
-  }
+  createForm.value = { name: '', target: '', sort: 0, isEnabled: true, icon: '', remark: '' }
   createDialogVisible.value = true
 }
 
-// 模拟创建金刚区入口
-function createQuickEntry(file, data) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ data: { success: true } })
-    }, 500)
-  })
-}
-
 function handleCreateConfirm() {
-  if (fileList.value.length === 0) {
-    ElMessage.warning('请上传图标')
+  // 验证表单
+  if (!createForm.value.name || !createForm.value.sort || !createForm.value.icon) {
+    ElMessage.warning('请填写完整的表单信息')
     return
   }
   
-  // 使用模拟接口
-  createQuickEntry(fileList.value[0], createForm.value).then(res => {
-    ElMessage.success('创建成功')
-    createDialogVisible.value = false
-    getList()
+  // 使用真实API接口
+  createQuickEntry(createForm.value).then(res => {
+    if (res.code === 0) {
+      ElMessage.success('创建成功')
+      createDialogVisible.value = false
+      getList()
+    } else {
+      ElMessage.error(res.message || '创建失败')
+    }
   }).catch(() => {
     ElMessage.error('创建失败')
-  })
-}
-
-// 模拟获取金刚区入口详情
-function getQuickEntryDetail(id) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const entry = mockQuickEntries.find(item => item.id === id)
-      resolve({ data: entry })
-    }, 300)
   })
 }
 
@@ -429,25 +247,8 @@ function handleUpdate(row) {
     }
     target = selectedRows.value[0]
   }
-  getQuickEntryDetail(target.id).then(res => {
-    editForm.value = { ...res.data }
-    // 清空编辑文件列表
-    editFileList.value = []
-    // 清空文件输入框
-    if (editFileInputRef.value) {
-      editFileInputRef.value.value = ''
-    }
-    editDialogVisible.value = true
-  })
-}
-
-// 模拟更新金刚区入口
-function updateQuickEntry(id, file, data) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ data: { success: true } })
-    }, 500)
-  })
+  editForm.value = { ...target }
+  editDialogVisible.value = true
 }
 
 function handleEditConfirm() {
@@ -457,21 +258,23 @@ function handleEditConfirm() {
     return
   }
   
-  // 使用模拟接口
-  const file = editFileList.value.length > 0 ? editFileList.value[0] : null
-  updateQuickEntry(editForm.value.id, file, editForm.value).then(() => {
-    ElMessage.success('修改成功')
-    editDialogVisible.value = false
-    getList()
-  }).catch(() => ElMessage.error('修改失败'))
-}
-
-// 模拟删除金刚区入口
-function deleteQuickEntry(ids) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ data: { success: true } })
-    }, 500)
+  // 验证表单
+  if (!editForm.value.name || !editForm.value.sort || !editForm.value.icon) {
+    ElMessage.warning('请填写完整的表单信息')
+    return
+  }
+  
+  // 使用真实API接口
+  updateQuickEntry(editForm.value).then(res => {
+    if (res.code === 0) {
+      ElMessage.success('修改成功')
+      editDialogVisible.value = false
+      getList()
+    } else {
+      ElMessage.error(res.message || '修改失败')
+    }
+  }).catch(() => {
+    ElMessage.error('修改失败')
   })
 }
 
@@ -495,65 +298,33 @@ function handleDelete(row) {
       type: 'warning',
     }
   ).then(() => {
-    deleteQuickEntry(targets).then(() => {
-      ElMessage.success('删除成功')
-      getList()
-    }).catch(() => {})
+    deleteQuickEntry(targets).then(res => {
+      if (res.code === 0) {
+        ElMessage.success('删除成功')
+        getList()
+      } else {
+        ElMessage.error(res.message || '删除失败')
+      }
+    }).catch(() => {
+      ElMessage.error('删除失败')
+    })
   }).catch(() => {})
 }
 
-// 模拟更新金刚区入口状态
-function updateQuickEntryStatus(id, status) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ data: { success: true } })
-    }, 300)
-  })
-}
-
 function handleStatusChange(row) {
-  updateQuickEntryStatus(row.id, row.status).then(() => {
-    ElMessage.success('状态更新成功')
+  // 使用updateQuickEntry更新状态
+  updateQuickEntry(row).then(res => {
+    if (res.code === 0) {
+      ElMessage.success('状态更新成功')
+    } else {
+      ElMessage.error(res.message || '状态更新失败')
+      // 恢复原状态
+      row.isEnabled = !row.isEnabled
+    }
   }).catch(() => {
     ElMessage.error('状态更新失败')
     // 恢复原状态
-    row.status = row.status === '1' ? '0' : '1'
-  })
-}
-
-// 模拟获取金刚区入口列表
-function queryQuickEntryList(params) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      let filteredData = [...mockQuickEntries]
-      
-      // 模拟搜索
-      if (params.conditions_) {
-        const conditions = params.conditions_.split(';')
-        conditions.forEach(condition => {
-          const [key, operator, value] = condition.split(':')
-          if (key === 'name' && operator === 'like') {
-            filteredData = filteredData.filter(item => item.name.includes(value))
-          }
-          if (key === 'status' && operator === 'eq') {
-            filteredData = filteredData.filter(item => item.status === value)
-          }
-        })
-      }
-      
-      // 模拟排序
-      filteredData.sort((a, b) => a.sort - b.sort)
-      
-      // 模拟分页
-      const total = filteredData.length
-      const page = params.current || 1
-      const size = params.size || 10
-      const start = (page - 1) * size
-      const end = start + size
-      const records = filteredData.slice(start, end)
-      
-      resolve({ data: { records, total } })
-    }, 500)
+    row.isEnabled = !row.isEnabled
   })
 }
 
@@ -564,12 +335,13 @@ function getList() {
   if (queryParams.value.name) {
     conditions.push(`name:like:${queryParams.value.name}`)
   }
-  // 使用status字段进行搜索
-  if (queryParams.value.status) {
-    conditions.push(`status:eq:${queryParams.value.status}`)
+  // 使用isEnabled字段进行搜索
+  if (queryParams.value.isEnabled) {
+    conditions.push(`isEnabled:eq:${queryParams.value.isEnabled}`)
   }
-  // 添加按sort升序排序
+  // 添加按sort升序排序和createTime降序排序
   conditions.push('sort:sort:asc')
+  conditions.push('createTime:sort:desc')
   
   const params = {
     size: queryParams.value.size,
@@ -580,13 +352,16 @@ function getList() {
     params['conditions_'] = conditions.join(';') // 使用分号分隔
   }
   
-  // 使用模拟接口
+  // 使用真实API接口
   queryQuickEntryList(params).then(res => {
-    tableData.value = res.data?.records || []
-    total.value = res.data?.total || 0
+    if (res.code === 0) {
+      tableData.value = res.data?.records || []
+      total.value = Number(res.data?.total) || 0
+    }
     loading.value = false
   }).catch(() => {
     loading.value = false
+    ElMessage.error('获取数据失败')
   })
 }
 
@@ -601,17 +376,6 @@ onMounted(() => {
 }
 .mb8 {
   margin-bottom: 8px;
-}
-
-.file-list {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
-  border: 1px solid #ebeef5;
 }
 
 .current-icon {

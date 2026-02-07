@@ -1,13 +1,12 @@
 <template>
   <div class="upload-file">
     <el-upload
-      multiple
+      :multiple="false"
       :action="uploadFileUrl"
+      :data="uploadData"
       :before-upload="handleBeforeUpload"
       :file-list="fileList"
-      :limit="limit"
       :on-error="handleUploadError"
-      :on-exceed="handleExceed"
       :on-success="handleUploadSuccess"
       :show-file-list="false"
       :headers="headers"
@@ -28,7 +27,7 @@
     <!-- 文件列表 -->
     <transition-group class="upload-file-list el-upload-list el-upload-list--text" name="el-fade-in-linear" tag="ul">
       <li :key="file.uid" class="el-upload-list__item ele-upload-list__item-content" v-for="(file, index) in fileList">
-        <el-link :href="`${baseUrl}${file.url}`" :underline="false" target="_blank">
+        <el-link :href="`${baseUrl}/public/storage/preview?fileKey=${file.url}`" :underline="false" target="_blank">
           <span class="el-icon-document"> {{ getFileName(file.name) }} </span>
         </el-link>
         <div class="ele-upload-list__item-content-action">
@@ -76,9 +75,10 @@ const emit = defineEmits();
 const number = ref(0);
 const uploadList = ref([]);
 const baseUrl = import.meta.env.VITE_APP_BASE_API;
-const uploadFileUrl = ref(import.meta.env.VITE_APP_BASE_API + "/common/upload"); // 上传文件服务器地址
+const uploadFileUrl = ref(import.meta.env.VITE_APP_BASE_API + "/basic/storage/upload"); // 上传文件服务器地址
 const headers = ref({ Authorization: "Bearer " + getToken() });
 const fileList = ref([]);
+const uploadData = ref({ isPublic: true, isUsed: false }); // 上传额外参数
 const showTip = computed(
   () => props.isShowTip && (props.fileType || props.fileSize)
 );
@@ -132,10 +132,7 @@ function handleBeforeUpload(file) {
   return true;
 }
 
-// 文件个数超出
-function handleExceed() {
-  proxy.$modal.msgError(`上传文件数量不能超过 ${props.limit} 个!`);
-}
+
 
 // 上传失败
 function handleUploadError(err) {
@@ -144,13 +141,16 @@ function handleUploadError(err) {
 
 // 上传成功回调
 function handleUploadSuccess(res, file) {
-  if (res.code === 200) {
-    uploadList.value.push({ name: res.fileName, url: res.fileName });
+  if (res.code === 0) {
+    const fileKey = res.data.fileKey;
+    // 直接替换当前文件，而不是添加
+    uploadList.value = [{ name: fileKey, url: fileKey }];
+    number.value--;
     uploadedSuccessfully();
   } else {
     number.value--;
     proxy.$modal.closeLoading();
-    proxy.$modal.msgError(res.msg);
+    proxy.$modal.msgError(res.message || '上传失败');
     proxy.$refs.fileUpload.handleRemove(file);
     uploadedSuccessfully();
   }
@@ -164,13 +164,12 @@ function handleDelete(index) {
 
 // 上传结束处理
 function uploadedSuccessfully() {
-  if (number.value > 0 && uploadList.value.length === number.value) {
-    fileList.value = fileList.value.filter(f => f.url !== undefined).concat(uploadList.value);
-    uploadList.value = [];
-    number.value = 0;
-    emit("update:modelValue", listToString(fileList.value));
-    proxy.$modal.closeLoading();
-  }
+  // 直接替换文件列表，不限制个数
+  fileList.value = uploadList.value;
+  uploadList.value = [];
+  number.value = 0;
+  emit("update:modelValue", listToString(fileList.value));
+  proxy.$modal.closeLoading();
 }
 
 // 获取文件名称

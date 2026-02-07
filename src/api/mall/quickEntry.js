@@ -1,44 +1,44 @@
 import request from '@/utils/request'
 
-// 新增金刚区入口（文件上传）
-export function createQuickEntry(file, data) {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('name', data.name);
-  formData.append('linkUrl', data.linkUrl);
-  formData.append('sort', data.sort);
-  formData.append('status', data.status);
-  
+// 新增金刚区入口
+export function createQuickEntry(data) {
   return request({
-    url: '/admin/quickEntry/create',
+    url: '/admin/platQuickEntry/create',
     method: 'post',
-    data: formData
+    data: {
+      name: data.name,
+      icon: data.icon,
+      type: data.type || 1,
+      target: data.target || null,
+      sort: data.sort,
+      isEnabled: data.isEnabled,
+      remark: data.remark || ''
+    }
   })
 }
 
-// 修改金刚区入口（文件上传）
-export function updateQuickEntry(id, file, data) {
-  const formData = new FormData();
-  formData.append('id', id);
-  formData.append('name', data.name);
-  formData.append('linkUrl', data.linkUrl);
-  formData.append('sort', data.sort);
-  formData.append('status', data.status);
-  if (file) {
-    formData.append('file', file);
-  }
-  
+// 修改金刚区入口
+export function updateQuickEntry(data) {
   return request({
-    url: '/admin/quickEntry/update',
+    url: '/admin/platQuickEntry/update',
     method: 'post',
-    data: formData
+    data: {
+      id: data.id,
+      name: data.name,
+      icon: data.icon,
+      type: data.type || 1,
+      target: data.target || null,
+      sort: data.sort,
+      isEnabled: data.isEnabled,
+      remark: data.remark || ''
+    }
   })
 }
 
 // 删除金刚区入口
 export function deleteQuickEntry(ids) {
   return request({
-    url: '/admin/quickEntry/delete',
+    url: '/admin/platQuickEntry/delete',
     method: 'post',
     data: ids
   })
@@ -47,7 +47,7 @@ export function deleteQuickEntry(ids) {
 // 查询金刚区入口详情
 export function getQuickEntryDetail(id) {
   return request({
-    url: `/admin/quickEntry/detail`,
+    url: `/admin/platQuickEntry/crud/query`,
     method: 'get',
     params: { id }
   })
@@ -56,17 +56,8 @@ export function getQuickEntryDetail(id) {
 // 查询金刚区入口列表
 export function queryQuickEntryList(params) {
   return request({
-    url: '/admin/quickEntry/query',
+    url: '/admin/platQuickEntry/crud/query',
     method: 'get',
     params
-  })
-}
-
-// 更新金刚区入口状态
-export function updateQuickEntryStatus(id, status) {
-  return request({
-    url: '/admin/quickEntry/updateStatus',
-    method: 'post',
-    data: { id, status }
   })
 }
