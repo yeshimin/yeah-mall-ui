@@ -87,6 +87,12 @@ function filterAsyncRouter(asyncRouterMap, lastRouter = false, type = false) {
       return false
     }
     
+    // 跳过特定的无效秒杀路由路径
+    if ((route.path === '/mall/seckill/seckill-analysis' || route.path === '/mall/seckill/seckill-monito') && (!route.component && (!route.children || !route.children.length))) {
+      console.warn('Skipping invalid seckill route:', route.path)
+      return false
+    }
+    
     if (type && route.children) {
       route.children = filterChildren(route.children)
     }

@@ -235,6 +235,56 @@ export const dynamicRoutes = [
         permissions: ['mall:quickEntry:list'],
         name: 'MallQuickEntry',
         meta: { title: '金刚区管理', icon: 'grid', noCache: true }
+      },
+      // 秒杀活动管理
+      {
+        path: 'seckill',
+        component: () => import('@/views/mall/seckill/index.vue'),
+        permissions: ['mall:seckill:list'],
+        name: 'MallSeckill',
+        meta: { title: '秒杀活动管理', icon: 'timer', noCache: true },
+        children: [
+          // 活动列表
+          {
+            path: 'list',
+            component: () => import('@/views/mall/seckill/list/index.vue'),
+            permissions: ['mall:seckill:list'],
+            name: 'MallSeckillList',
+            meta: { title: '活动列表', icon: 'timer', noCache: true }
+          },
+          // 商品管理
+          {
+            path: 'product',
+            component: () => import('@/views/mall/seckill/product/index.vue'),
+            permissions: ['mall:seckill:product'],
+            name: 'MallSeckillProduct',
+            meta: { title: '商品管理', icon: 'goods', noCache: true }
+          },
+          // 申请审核
+          {
+            path: 'audit',
+            component: () => import('@/views/mall/seckill/audit/index.vue'),
+            permissions: ['mall:seckill:audit'],
+            name: 'MallSeckillAudit',
+            meta: { title: '申请审核', icon: 'check', noCache: true }
+          },
+          // 监控中心
+          {
+            path: 'monitor',
+            component: () => import('@/views/mall/seckill/monitor/index.vue'),
+            permissions: ['mall:seckill:monitor'],
+            name: 'MallSeckillMonitor',
+            meta: { title: '监控中心', icon: 'eye', noCache: true }
+          },
+          // 数据分析
+          {
+            path: 'analysis',
+            component: () => import('@/views/mall/seckill/analysis/index.vue'),
+            permissions: ['mall:seckill:analysis'],
+            name: 'MallSeckillAnalysis',
+            meta: { title: '数据分析', icon: 'data-analysis', noCache: true }
+          }
+        ]
       }
     ]
   },
