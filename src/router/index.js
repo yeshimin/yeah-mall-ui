@@ -48,45 +48,6 @@ export const constantRoutes = [
     hidden: true
   },
   {
-    path: '/mall/sku',
-    component: Layout,
-    hidden: true,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/mall/sku/index.vue'),
-        name: 'SkuManage',
-        meta: { title: 'SKU管理', icon: 'price-tag' }
-      }
-    ]
-  },
-  {
-    path: '/mall/banner/test',
-    component: Layout,
-    hidden: true,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/mall/banner/test.vue'),
-        name: 'BannerTest',
-        meta: { title: 'Banner测试' }
-      }
-    ]
-  },
-  {
-    path: '/mall/banner/test-update',
-    component: Layout,
-    hidden: true,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/mall/banner/test-update.vue'),
-        name: 'BannerTestUpdate',
-        meta: { title: 'Banner更新测试' }
-      }
-    ]
-  },
-  {
     path: "/:pathMatch(.*)*",
     component: () => import('@/views/error/404'),
     hidden: true
@@ -122,59 +83,6 @@ export const constantRoutes = [
         meta: { title: '个人中心', icon: 'user' }
       }
     ]
-  },
-  // 商家端路由
-  {
-    path: '/mall/shipping',
-    component: Layout,
-    hidden: true,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/mall/shipping/index.vue'),
-        name: 'MallShippingSettings',
-        meta: { title: '发货信息设置', icon: 'truck' }
-      }
-    ]
-  },
-  {
-    path: '/mall/order',
-    component: Layout,
-    hidden: true,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/mall/order/index.vue'),
-        name: 'MallOrderManagement',
-        meta: { title: '订单管理', icon: 'shopping-cart' }
-      }
-    ]
-  },
-  {
-    path: '/mall/cschat',
-    component: Layout,
-    hidden: true,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/mall/cschat/index.vue'),
-        name: 'MallCustomerService',
-        meta: { title: '客服消息', icon: 'message' }
-      }
-    ]
-  },
-  {
-    path: '/mall/settings',
-    component: Layout,
-    hidden: true,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/mall/settings/index.vue'),
-        name: 'MallBasicSettings',
-        meta: { title: '基础设置', icon: 'settings' }
-      }
-    ]
   }
 ]
 
@@ -188,101 +96,34 @@ export const dynamicRoutes = [
     meta: { title: '商城管理', icon: 'shopping-mall' },
     alwaysShow: true,
     children: [
-      // 发货信息设置
+      // 商品管理-sku
       {
-        path: 'shipping',
-        component: () => import('@/views/mall/shipping/index.vue'),
-        permissions: ['mall:shipping:list'],
-        name: 'MallShippingSettings',
-        meta: { title: '发货信息设置', icon: 'truck', noCache: true }
+        path: 'sku',
+        component: () => import('@/views/mall/sku/index.vue'),
+        hidden: true,
+        name: 'MallSkuManage',
+        meta: { title: '商品SKU管理', icon: 'price-tag', noCache: true }
       },
-      // 订单管理
+      // 商家秒杀管理
       {
-        path: 'order',
-        component: () => import('@/views/mall/order/index.vue'),
-        permissions: ['mall:order:list'],
-        name: 'MallOrderManagement',
-        meta: { title: '订单管理', icon: 'shopping-cart', noCache: true }
-      },
-      // 客服消息
-      {
-        path: 'cschat',
-        component: () => import('@/views/mall/cschat/index.vue'),
-        permissions: ['mall:cschat:list'],
-        name: 'MallCustomerService',
-        meta: { title: '客服消息', icon: 'message', noCache: true }
-      },
-      // 基础设置
-      {
-        path: 'settings',
-        component: () => import('@/views/mall/settings/index.vue'),
-        permissions: ['mall:settings:list'],
-        name: 'MallBasicSettings',
-        meta: { title: '基础设置', icon: 'settings', noCache: true }
-      },
-      // 平台Banner管理
-      {
-        path: 'platBanner',
-        component: () => import('@/views/mall/platBanner/index.vue'),
-        permissions: ['mall:platBanner:list'],
-        name: 'MallPlatBanner',
-        meta: { title: '平台Banner管理', icon: 'picture', noCache: true }
-      },
-      // 金刚区管理
-      {
-        path: 'quickEntry',
-        component: () => import('@/views/mall/quickEntry/index.vue'),
-        permissions: ['mall:quickEntry:list'],
-        name: 'MallQuickEntry',
-        meta: { title: '金刚区管理', icon: 'grid', noCache: true }
-      },
-      // 秒杀活动管理
-      {
-        path: 'seckill',
-        component: () => import('@/views/mall/seckill/index.vue'),
-        permissions: ['mall:seckill:list'],
-        name: 'MallSeckill',
-        meta: { title: '秒杀活动管理', icon: 'timer', noCache: true },
+        path: 'mch-seckill',
+        component: () => import('@/components/ParentView'),
+        name: 'MchSeckill',
+        meta: { title: '商家秒杀管理', icon: 'timer', noCache: true },
         children: [
-          // 活动列表
+          // 秒杀活动管理
           {
-            path: 'list',
-            component: () => import('@/views/mall/seckill/list/index.vue'),
-            permissions: ['mall:seckill:list'],
+            path: 'activity',
+            component: () => import('@/views/mall/mch-seckill/activity/index.vue'),
             name: 'MallSeckillList',
-            meta: { title: '活动列表', icon: 'timer', noCache: true }
+            meta: { title: '活动管理', icon: 'timer', noCache: true }
           },
-          // 商品管理
+          // 秒杀商品管理
           {
             path: 'product',
-            component: () => import('@/views/mall/seckill/product/index.vue'),
-            permissions: ['mall:seckill:product'],
+            component: () => import('@/views/mall/mch-seckill/product/index.vue'),
             name: 'MallSeckillProduct',
             meta: { title: '商品管理', icon: 'goods', noCache: true }
-          },
-          // 申请审核
-          {
-            path: 'audit',
-            component: () => import('@/views/mall/seckill/audit/index.vue'),
-            permissions: ['mall:seckill:audit'],
-            name: 'MallSeckillAudit',
-            meta: { title: '申请审核', icon: 'check', noCache: true }
-          },
-          // 监控中心
-          {
-            path: 'monitor',
-            component: () => import('@/views/mall/seckill/monitor/index.vue'),
-            permissions: ['mall:seckill:monitor'],
-            name: 'MallSeckillMonitor',
-            meta: { title: '监控中心', icon: 'eye', noCache: true }
-          },
-          // 数据分析
-          {
-            path: 'analysis',
-            component: () => import('@/views/mall/seckill/analysis/index.vue'),
-            permissions: ['mall:seckill:analysis'],
-            name: 'MallSeckillAnalysis',
-            meta: { title: '数据分析', icon: 'data-analysis', noCache: true }
           }
         ]
       }
