@@ -29,8 +29,8 @@
         <el-button icon="RefreshLeft" @click="resetQuery">
           重置
         </el-button>
-        <el-button type="success" icon="Plus" @click="handleAdd">
-          新增活动
+        <el-button type="success" icon="Plus" @click="handleApply">
+          申请参加活动
         </el-button>
       </el-form-item>
     </el-form>
@@ -52,26 +52,45 @@
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column prop="applyStatus" label="申请状态" width="120">
+        <template #default="scope">
+          <el-tag :type="scope.row.applyStatus === 1 ? 'success' : scope.row.applyStatus === 0 ? 'warning' : 'info'">
+            {{ scope.row.applyStatus === 1 ? '已申请' : scope.row.applyStatus === 2 ? '已通过' : '未申请' }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="remark" label="活动备注" min-width="200" />
       <el-table-column label="操作" width="150" fixed="right">
         <template #default="scope">
           <el-button
+            v-if="scope.row.applyStatus === 0"
             size="small"
             type="primary"
             icon="Edit"
-            @click="handleEdit(scope.row)"
-            v-hasPermi="['mall:seckill:edit']"
+            @click="handleApply(scope.row)"
+            v-hasPermi="['mall:seckill:apply']"
           >
-            编辑
+            申请
           </el-button>
           <el-button
+            v-else-if="scope.row.applyStatus === 1"
             size="small"
-            type="danger"
-            icon="Delete"
-            @click="handleDelete(scope.row.id)"
-            v-hasPermi="['mall:seckill:delete']"
+            type="info"
+            icon="View"
+            @click="handleView(scope.row)"
+            v-hasPermi="['mall:seckill:view']"
           >
-            删除
+            查看
+          </el-button>
+          <el-button
+            v-else
+            size="small"
+            type="success"
+            icon="Check"
+            @click="handleView(scope.row)"
+            v-hasPermi="['mall:seckill:view']"
+          >
+            已通过
           </el-button>
         </template>
       </el-table-column>
@@ -88,7 +107,7 @@
       @current-change="handleCurrentChange"
     />
 
-    <!-- 新增/编辑对话框 -->
+    <!-- 活动详情对话框 -->
     <el-dialog
       :title="dialogTitle"
       v-model="dialogVisible"
@@ -97,57 +116,72 @@
       <el-form
         ref="formRef"
         :model="form"
-        :rules="rules"
         label-width="100px"
       >
-        <el-form-item label="活动名称" prop="activityName">
+        <el-form-item label="活动名称">
           <el-input
             v-model="form.activityName"
             placeholder="请输入活动名称"
             maxlength="50"
+            readonly
           />
         </el-form-item>
-        <el-form-item label="开始时间" prop="startTime">
+        <el-form-item label="开始时间">
           <el-date-picker
             v-model="form.startTime"
             type="datetime"
             placeholder="请选择开始时间"
             style="width: 100%"
+            readonly
           />
         </el-form-item>
-        <el-form-item label="结束时间" prop="endTime">
+        <el-form-item label="结束时间">
           <el-date-picker
             v-model="form.endTime"
             type="datetime"
             placeholder="请选择结束时间"
             style="width: 100%"
+            readonly
           />
         </el-form-item>
-        <el-form-item label="活动状态" prop="status">
+        <el-form-item label="活动状态">
           <el-select
             v-model="form.status"
             placeholder="请选择活动状态"
             style="width: 100%"
+            disabled
           >
             <el-option label="未开始" value="0" />
             <el-option label="进行中" value="1" />
             <el-option label="已结束" value="2" />
           </el-select>
         </el-form-item>
-        <el-form-item label="活动备注" prop="remark">
+        <el-form-item label="申请状态">
+          <el-select
+            v-model="form.applyStatus"
+            placeholder="请选择申请状态"
+            style="width: 100%"
+            disabled
+          >
+            <el-option label="未申请" value="0" />
+            <el-option label="已申请" value="1" />
+            <el-option label="已通过" value="2" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="活动备注">
           <el-input
             v-model="form.remark"
             type="textarea"
             placeholder="请输入活动备注"
             :rows="3"
             maxlength="200"
+            readonly
           />
         </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
+          <el-button @click="dialogVisible = false">关闭</el-button>
         </span>
       </template>
     </el-dialog>
@@ -183,6 +217,7 @@ const form = reactive({
   startTime: '',
   endTime: '',
   status: 0,
+  applyStatus: 0,
   remark: ''
 })
 
@@ -210,6 +245,7 @@ const mockActivityList = [
     startTime: '2026-02-10 10:00:00',
     endTime: '2026-02-15 23:59:59',
     status: 0,
+    applyStatus: 0,
     remark: '春季限时秒杀，全场商品低至5折'
   },
   {
@@ -218,6 +254,7 @@ const mockActivityList = [
     startTime: '2026-02-14 00:00:00',
     endTime: '2026-02-14 23:59:59',
     status: 1,
+    applyStatus: 1,
     remark: '情人节特别秒杀活动'
   },
   {
@@ -226,6 +263,7 @@ const mockActivityList = [
     startTime: '2026-02-01 00:00:00',
     endTime: '2026-02-07 23:59:59',
     status: 2,
+    applyStatus: 2,
     remark: '春节期间限时秒杀'
   }
 ]
@@ -267,31 +305,28 @@ const handleCurrentChange = (current) => {
   handleQuery()
 }
 
-// 新增
-const handleAdd = () => {
-  dialogTitle.value = '新增活动'
-  Object.assign(form, {
-    id: '',
-    activityName: '',
-    startTime: '',
-    endTime: '',
-    status: 0,
-    remark: ''
+// 申请参加活动
+const handleApply = (row) => {
+  ElMessageBox.confirm('确定要申请参加该活动吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    // 模拟申请操作
+    setTimeout(() => {
+      ElMessage.success('申请成功，请等待管理员审核')
+      getActivityList()
+    }, 500)
+  }).catch(() => {
+    // 取消申请
   })
-  dialogVisible.value = true
 }
 
-// 编辑
-const handleEdit = (row) => {
-  dialogTitle.value = '编辑活动'
+// 查看活动详情
+const handleView = (row) => {
+  dialogTitle.value = '活动详情'
   Object.assign(form, row)
   dialogVisible.value = true
-}
-
-// 删除
-const handleDelete = (id) => {
-  ElMessage.success('删除成功')
-  getActivityList()
 }
 
 // 提交
