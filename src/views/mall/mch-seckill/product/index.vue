@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
     <!-- 搜索表单 -->
-    <el-form :inline="true" :model="queryParams" class="mb-4">
+    <el-form :inline="true" :model="queryParams" class="mb8">
       <el-form-item label="商品名称" prop="productName">
         <el-input
           v-model="queryParams.productName"
@@ -376,6 +376,10 @@ onMounted(() => {
 <style scoped>
 .app-container {
   padding: 20px;
+}
+
+.mb8 {
+  margin-bottom: 8px;
 }
 
 .dialog-footer {

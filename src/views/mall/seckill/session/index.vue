@@ -1,94 +1,83 @@
 <template>
-  <div class="app-container">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>{{ activityName }} - 秒杀场次管理</span>
-          <el-button type="primary" @click="handleAdd" plain>
-            <el-icon><Plus /></el-icon>
-            新增场次
-          </el-button>
-        </div>
-      </template>
-      
-      <!-- 查询条件 -->
-      <el-form :inline="true" :model="queryParams" class="mb-4">
-        <el-form-item label="场次名称" prop="name">
-          <el-input 
-            v-model="queryParams.name" 
-            placeholder="请输入场次名称" 
-            clearable 
-            style="width: 200px"
-          />
-        </el-form-item>
-        <el-form-item label="场次状态" prop="status">
-          <el-select 
-            v-model="queryParams.status" 
-            placeholder="请选择场次状态" 
-            clearable 
-            style="width: 200px"
-          >
-            <el-option label="启用" value="1" />
-            <el-option label="禁用" value="0" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">
-            <el-icon><Search /></el-icon>
-            查询
-          </el-button>
-          <el-button @click="resetQuery">
-            <el-icon><Refresh /></el-icon>
-            重置
-          </el-button>
-        </el-form-item>
-      </el-form>
-      
-      <!-- 场次列表 -->
-      <el-table v-loading="loading" :data="sessionList" style="width: 100%">
-        <el-table-column type="index" label="序号" width="80" />
-        <el-table-column prop="name" label="场次名称" width="200" />
-        <el-table-column prop="startTime" label="开始时间" width="180" />
-        <el-table-column prop="endTime" label="结束时间" width="180" />
-        <el-table-column prop="sort" label="排序" width="100" />
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="scope">
-            <el-switch 
-              v-model="scope.row.status" 
-              :active-value="1" 
-              :inactive-value="0"
-              @change="handleStatusChange(scope.row)"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column prop="description" label="场次描述" />
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="scope">
-            <el-button type="primary" size="small" @click="handleEdit(scope.row)" plain>
-              <el-icon><Edit /></el-icon>
-              编辑
-            </el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row.id)" plain>
-              <el-icon><Delete /></el-icon>
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      
-      <!-- 分页 -->
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="pagination.current"
-          v-model:page-size="pagination.size"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="Number(pagination.total)"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+  <div class="seckill-session-manage">
+    <el-form ref="searchFormRef" :model="queryParams" label-position="left" label-width="80px" inline class="mb8">
+      <el-form-item label="场次名称">
+        <el-input 
+          v-model="queryParams.name" 
+          placeholder="请输入场次名称" 
+          clearable 
+          style="width: 200px"
         />
-      </div>
-    </el-card>
+      </el-form-item>
+      <el-form-item label="场次状态">
+        <el-select 
+          v-model="queryParams.status" 
+          placeholder="请选择场次状态" 
+          clearable 
+          style="width: 200px"
+        >
+          <el-option label="启用" value="1" />
+          <el-option label="禁用" value="0" />
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="handleQuery">
+          <el-icon><Search /></el-icon>
+          查询
+        </el-button>
+        <el-button @click="resetQuery">
+          <el-icon><Refresh /></el-icon>
+          重置
+        </el-button>
+        <el-button type="primary" @click="handleAdd">
+          <el-icon><Plus /></el-icon>
+          新增场次
+        </el-button>
+      </el-form-item>
+    </el-form>
+
+    <el-table v-loading="loading" :data="sessionList" style="width: 100%">
+      <el-table-column label="序号" type="index" width="80" />
+      <el-table-column prop="name" label="场次名称" width="200" />
+      <el-table-column prop="startTime" label="开始时间" width="180" />
+      <el-table-column prop="endTime" label="结束时间" width="180" />
+      <el-table-column prop="sort" label="排序" width="100" />
+      <el-table-column prop="status" label="状态" width="100">
+        <template #default="scope">
+          <el-switch 
+            v-model="scope.row.status" 
+            :active-value="1" 
+            :inactive-value="0"
+            @change="handleStatusChange(scope.row)"
+          />
+        </template>
+      </el-table-column>
+      <el-table-column prop="description" label="场次描述" />
+      <el-table-column label="操作" width="200" fixed="right">
+        <template #default="scope">
+          <el-button type="primary" size="small" @click="handleEdit(scope.row)" plain>
+            <el-icon><Edit /></el-icon>
+            编辑
+          </el-button>
+          <el-button type="danger" size="small" @click="handleDelete(scope.row.id)" plain>
+            <el-icon><Delete /></el-icon>
+            删除
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <div class="pagination-container" style="margin-top: 20px; text-align: right;">
+      <el-pagination
+        v-model:current-page="pagination.current"
+        v-model:page-size="pagination.size"
+        :page-sizes="[10, 20, 50, 100]"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="Number(pagination.total)"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
     
     <!-- 新增/编辑对话框 -->
     <el-dialog :title="dialogTitle" v-model="dialogVisible" width="600px">
@@ -362,11 +351,13 @@ function handleCurrentChange(current) {
 }
 </script>
 
-<style scoped>
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+<style lang="scss" scoped>
+.seckill-session-manage {
+  padding: 20px;
+}
+
+.mb8 {
+  margin-bottom: 8px;
 }
 
 .pagination-container {

@@ -1,14 +1,10 @@
 <template>
-  <div class="app-container">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>秒杀监控中心</span>
-          <el-select v-model="selectedActivityId" placeholder="选择活动" @change="handleActivityChange" style="width: 200px">
-            <el-option v-for="activity in activityList" :key="activity.id" :label="activity.name" :value="activity.id" />
-          </el-select>
-        </div>
-      </template>
+  <div class="seckill-manage">
+    <div class="activity-selector mb8">
+      <el-select v-model="selectedActivityId" placeholder="选择活动" @change="handleActivityChange" style="width: 200px">
+        <el-option v-for="activity in activityList" :key="activity.id" :label="activity.name" :value="activity.id" />
+      </el-select>
+    </div>
       
       <!-- 监控概览 -->
       <div class="monitor-overview">
@@ -139,7 +135,6 @@
           </div>
         </el-card>
       </div>
-    </el-card>
   </div>
 </template>
 
@@ -258,11 +253,17 @@ function getStockColor(rate) {
 }
 </script>
 
-<style scoped>
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+<style lang="scss" scoped>
+.seckill-manage {
+  padding: 20px;
+}
+
+.mb8 {
+  margin-bottom: 8px;
+}
+
+.activity-selector {
+  margin-bottom: 20px;
 }
 
 .monitor-overview {

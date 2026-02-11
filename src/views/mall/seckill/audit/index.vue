@@ -1,14 +1,7 @@
 <template>
-  <div class="app-container">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>秒杀申请审核</span>
-        </div>
-      </template>
-      
-      <!-- 查询条件 -->
-      <el-form :inline="true" :model="queryParams" class="mb-4">
+  <div class="seckill-manage">
+    <!-- 查询条件 -->
+    <el-form :inline="true" :model="queryParams" class="mb8">
         <el-form-item label="申请商家" prop="merchantName">
           <el-input v-model="queryParams.merchantName" placeholder="请输入商家名称" clearable style="width: 200px" />
         </el-form-item>
@@ -87,7 +80,6 @@
           @current-change="handleCurrentChange"
         />
       </div>
-    </el-card>
     
     <!-- 审核对话框 -->
     <el-dialog :title="dialogTitle" v-model="dialogVisible" width="500px">
@@ -365,11 +357,13 @@ function handleCurrentChange(current) {
 }
 </script>
 
-<style scoped>
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+<style lang="scss" scoped>
+.seckill-manage {
+  padding: 20px;
+}
+
+.mb8 {
+  margin-bottom: 8px;
 }
 
 .pagination-container {

@@ -1,18 +1,7 @@
 <template>
-  <div class="app-container">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>秒杀商品管理</span>
-          <el-button type="primary" @click="handleAdd" plain>
-            <el-icon><Plus /></el-icon>
-            新增商品
-          </el-button>
-        </div>
-      </template>
-      
-      <!-- 查询条件 -->
-      <el-form :inline="true" :model="queryParams" class="mb-4">
+  <div class="seckill-manage">
+    <!-- 查询条件 -->
+    <el-form :inline="true" :model="queryParams" class="mb8">
         <el-form-item label="商品名称" prop="name">
           <el-input v-model="queryParams.name" placeholder="请输入商品名称" clearable style="width: 200px" />
         </el-form-item>
@@ -35,6 +24,10 @@
           <el-button @click="resetQuery">
             <el-icon><Refresh /></el-icon>
             重置
+          </el-button>
+          <el-button type="primary" @click="handleAdd">
+            <el-icon><Plus /></el-icon>
+            新增商品
           </el-button>
         </el-form-item>
       </el-form>
@@ -93,7 +86,6 @@
           @current-change="handleCurrentChange"
         />
       </div>
-    </el-card>
     
     <!-- 新增/编辑对话框 -->
     <el-dialog :title="dialogTitle" v-model="dialogVisible" width="600px">
@@ -379,11 +371,13 @@ function handleCurrentChange(current) {
 }
 </script>
 
-<style scoped>
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+<style lang="scss" scoped>
+.seckill-manage {
+  padding: 20px;
+}
+
+.mb8 {
+  margin-bottom: 8px;
 }
 
 .pagination-container {
