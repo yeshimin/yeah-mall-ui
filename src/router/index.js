@@ -126,6 +126,43 @@ export const dynamicRoutes = [
             meta: { title: '商品管理', icon: 'goods', noCache: true }
           }
         ]
+      },
+      // 管理端秒杀管理
+      {
+        path: 'seckill',
+        component: () => import('@/components/ParentView'),
+        name: 'Seckill',
+        meta: { title: '秒杀管理', icon: 'timer', noCache: true },
+        children: [
+          // 秒杀活动列表
+          {
+            path: 'list',
+            component: () => import('@/views/mall/seckill/list/index.vue'),
+            name: 'SeckillList',
+            meta: { title: '活动列表', icon: 'timer', noCache: true }
+          },
+          // 秒杀场次管理
+          {
+            path: 'session',
+            component: () => import('@/views/mall/seckill/session/index.vue'),
+            name: 'SeckillSession',
+            meta: { title: '场次管理', icon: 'timer', noCache: true }
+          },
+          // 秒杀商品管理
+          {
+            path: 'product',
+            component: () => import('@/views/mall/seckill/product/index.vue'),
+            name: 'SeckillProduct',
+            meta: { title: '商品管理', icon: 'goods', noCache: true }
+          },
+          // 秒杀审核管理
+          {
+            path: 'audit',
+            component: () => import('@/views/mall/seckill/audit/index.vue'),
+            name: 'SeckillAudit',
+            meta: { title: '审核管理', icon: 'check', noCache: true }
+          }
+        ]
       }
     ]
   },

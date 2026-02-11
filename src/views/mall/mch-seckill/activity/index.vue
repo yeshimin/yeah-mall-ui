@@ -53,13 +53,25 @@
         </template>
       </el-table-column>
       <el-table-column prop="applyStatus" label="申请状态" width="120">
-        <template #default="scope">
-          <el-tag :type="scope.row.applyStatus === 1 ? 'success' : scope.row.applyStatus === 0 ? 'warning' : 'info'">
-            {{ scope.row.applyStatus === 1 ? '已申请' : scope.row.applyStatus === 2 ? '已通过' : '未申请' }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="remark" label="活动备注" min-width="200" />
+          <template #default="scope">
+            <el-tag :type="scope.row.applyStatus === 1 ? 'success' : scope.row.applyStatus === 0 ? 'warning' : 'info'">
+              {{ scope.row.applyStatus === 1 ? '已申请' : scope.row.applyStatus === 2 ? '已通过' : '未申请' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="hasSession" label="场次设置" width="120">
+          <template #default="scope">
+            <el-tag :type="scope.row.hasSession === 1 ? 'success' : 'info'">
+              {{ scope.row.hasSession === 1 ? '多场次' : '单场次' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="sessionCount" label="场次数量" width="100">
+          <template #default="scope">
+            {{ scope.row.sessionCount || 0 }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="remark" label="活动备注" min-width="200" />
       <el-table-column label="操作" width="150" fixed="right">
         <template #default="scope">
           <el-button
@@ -102,7 +114,7 @@
       v-model:page-size="queryParams.pageSize"
       :page-sizes="[10, 20, 30, 50]"
       layout="total, sizes, prev, pager, next, jumper"
-      :total="total"
+      :total="Number(total)"
       @size-change="handleSizeChange"
       @current-change="handleCurrentChange"
     />
@@ -168,6 +180,25 @@
             <el-option label="已通过" value="2" />
           </el-select>
         </el-form-item>
+        <el-form-item label="场次设置">
+          <el-select
+            v-model="form.hasSession"
+            placeholder="请选择场次设置"
+            style="width: 100%"
+            disabled
+          >
+            <el-option label="单场次" value="0" />
+            <el-option label="多场次" value="1" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="场次数量">
+          <el-input
+            v-model="form.sessionCount"
+            placeholder="场次数量"
+            style="width: 100%"
+            disabled
+          />
+        </el-form-item>
         <el-form-item label="活动备注">
           <el-input
             v-model="form.remark"
@@ -182,6 +213,45 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="dialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 场次选择对话框 -->
+    <el-dialog
+      title="选择秒杀场次"
+      v-model="sessionDialogVisible"
+      width="600px"
+    >
+      <div v-if="selectedActivity.hasSession === 1">
+        <el-checkbox v-model="selectAllSessions" @change="handleSelectAllSessions">全选所有场次</el-checkbox>
+        <el-divider />
+        <el-checkbox-group v-model="selectedSessions" class="session-list">
+          <el-checkbox
+            v-for="session in sessionList"
+            :key="session.id"
+            :label="session.id"
+            style="display: block; margin-bottom: 10px"
+          >
+            <div class="session-item">
+              <div class="session-name">{{ session.name }}</div>
+              <div class="session-time">{{ session.startTime }} 至 {{ session.endTime }}</div>
+              <div class="session-status">
+                <el-tag :type="session.status === 1 ? 'success' : 'danger'">
+                  {{ session.status === 1 ? '启用' : '禁用' }}
+                </el-tag>
+              </div>
+            </div>
+          </el-checkbox>
+        </el-checkbox-group>
+      </div>
+      <div v-else class="no-session">
+        <el-empty description="该活动为单场次，无需选择场次" />
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="sessionDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmSessionSelection">确定选择</el-button>
         </span>
       </template>
     </el-dialog>
@@ -210,6 +280,13 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const formRef = ref(null)
 
+// 场次选择相关
+const sessionDialogVisible = ref(false)
+const selectedActivity = ref({})
+const sessionList = ref([])
+const selectedSessions = ref([])
+const selectAllSessions = ref(false)
+
 // 表单数据
 const form = reactive({
   id: '',
@@ -218,6 +295,8 @@ const form = reactive({
   endTime: '',
   status: 0,
   applyStatus: 0,
+  hasSession: 0,
+  sessionCount: 0,
   remark: ''
 })
 
@@ -246,6 +325,8 @@ const mockActivityList = [
     endTime: '2026-02-15 23:59:59',
     status: 0,
     applyStatus: 0,
+    hasSession: 1,
+    sessionCount: 3,
     remark: '春季限时秒杀，全场商品低至5折'
   },
   {
@@ -255,6 +336,8 @@ const mockActivityList = [
     endTime: '2026-02-14 23:59:59',
     status: 1,
     applyStatus: 1,
+    hasSession: 1,
+    sessionCount: 2,
     remark: '情人节特别秒杀活动'
   },
   {
@@ -264,6 +347,8 @@ const mockActivityList = [
     endTime: '2026-02-07 23:59:59',
     status: 2,
     applyStatus: 2,
+    hasSession: 0,
+    sessionCount: 0,
     remark: '春节期间限时秒杀'
   }
 ]
@@ -307,6 +392,77 @@ const handleCurrentChange = (current) => {
 
 // 申请参加活动
 const handleApply = (row) => {
+  if (row && row.hasSession === 1) {
+    // 多场次活动，显示场次选择对话框
+    selectedActivity.value = row
+    loadSessionList(row.id)
+    sessionDialogVisible.value = true
+  } else {
+    // 单场次活动，直接申请
+    confirmApply(row)
+  }
+}
+
+// 加载场次列表
+const loadSessionList = (activityId) => {
+  // 模拟API请求
+  setTimeout(() => {
+    sessionList.value = [
+      {
+        id: 1,
+        activityId: activityId,
+        name: '上午场',
+        startTime: '2026-02-14 10:00:00',
+        endTime: '2026-02-14 12:00:00',
+        status: 1
+      },
+      {
+        id: 2,
+        activityId: activityId,
+        name: '下午场',
+        startTime: '2026-02-14 14:00:00',
+        endTime: '2026-02-14 16:00:00',
+        status: 1
+      },
+      {
+        id: 3,
+        activityId: activityId,
+        name: '晚上场',
+        startTime: '2026-02-14 19:00:00',
+        endTime: '2026-02-14 21:00:00',
+        status: 0
+      }
+    ]
+    selectedSessions.value = []
+    selectAllSessions.value = false
+  }, 300)
+}
+
+// 全选场次
+const handleSelectAllSessions = (value) => {
+  if (value) {
+    // 只选择启用的场次
+    selectedSessions.value = sessionList.value
+      .filter(session => session.status === 1)
+      .map(session => session.id)
+  } else {
+    selectedSessions.value = []
+  }
+}
+
+// 确认选择场次
+const confirmSessionSelection = () => {
+  if (selectedSessions.value.length === 0) {
+    ElMessage.warning('请至少选择一个场次')
+    return
+  }
+  
+  sessionDialogVisible.value = false
+  confirmApply(selectedActivity.value, selectedSessions.value)
+}
+
+// 确认申请
+const confirmApply = (row, selectedSessionIds = []) => {
   ElMessageBox.confirm('确定要申请参加该活动吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
@@ -314,7 +470,11 @@ const handleApply = (row) => {
   }).then(() => {
     // 模拟申请操作
     setTimeout(() => {
-      ElMessage.success('申请成功，请等待管理员审核')
+      if (selectedSessionIds.length > 0) {
+        ElMessage.success(`申请成功，已选择 ${selectedSessionIds.length} 个场次，请等待管理员审核`)
+      } else {
+        ElMessage.success('申请成功，请等待管理员审核')
+      }
       getActivityList()
     }, 500)
   }).catch(() => {
@@ -353,5 +513,38 @@ onMounted(() => {
 
 .dialog-footer {
   text-align: right;
+}
+
+.session-list {
+  margin-top: 10px;
+}
+
+.session-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  margin-left: 20px;
+}
+
+.session-name {
+  font-weight: bold;
+  color: #333;
+}
+
+.session-time {
+  font-size: 12px;
+  color: #666;
+}
+
+.session-status {
+  margin-top: 4px;
+}
+
+.no-session {
+  padding: 40px 0;
+  text-align: center;
 }
 </style>
