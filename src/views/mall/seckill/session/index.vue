@@ -39,20 +39,18 @@
     <el-table v-loading="loading" :data="sessionList" style="width: 100%">
       <el-table-column label="序号" type="index" width="80" />
       <el-table-column prop="name" label="场次名称" width="200" />
-      <el-table-column prop="startTime" label="开始时间" width="180" />
+      <el-table-column prop="beginTime" label="开始时间" width="180" />
       <el-table-column prop="endTime" label="结束时间" width="180" />
       <el-table-column prop="sort" label="排序" width="100" />
-      <el-table-column prop="status" label="状态" width="100">
+      <el-table-column prop="isEnabled" label="是否启用" width="100">
         <template #default="scope">
           <el-switch 
-            v-model="scope.row.status" 
-            :active-value="1" 
-            :inactive-value="0"
+            v-model="scope.row.isEnabled" 
             @change="handleStatusChange(scope.row)"
           />
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="场次描述" />
+      <el-table-column prop="remark" label="备注" />
       <el-table-column label="操作" width="200" fixed="right">
         <template #default="scope">
           <el-button type="primary" size="small" @click="handleEdit(scope.row)" plain>
@@ -85,9 +83,9 @@
         <el-form-item label="场次名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入场次名称" />
         </el-form-item>
-        <el-form-item label="开始时间" prop="startTime">
+        <el-form-item label="开始时间" prop="beginTime">
           <el-date-picker 
-            v-model="form.startTime" 
+            v-model="form.beginTime" 
             type="datetime" 
             placeholder="选择开始时间" 
             style="width: 100%"
@@ -110,14 +108,14 @@
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="场次状态" prop="status">
-          <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
+        <el-form-item label="是否启用" prop="isEnabled">
+          <el-switch v-model="form.isEnabled" />
         </el-form-item>
-        <el-form-item label="场次描述" prop="description">
+        <el-form-item label="备注" prop="remark">
           <el-input 
-            v-model="form.description" 
+            v-model="form.remark" 
             type="textarea" 
-            placeholder="请输入场次描述" 
+            placeholder="请输入备注信息" 
             rows="3"
           />
         </el-form-item>
@@ -137,6 +135,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Edit, Delete } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
+import { createSeckillSession, updateSeckillSession, deleteSeckillSession, querySeckillSessionList } from '@/api/mall/seckill'
 
 // 路由相关
 const route = useRoute()
@@ -168,17 +167,17 @@ const form = reactive({
   id: '',
   activityId: '',
   name: '',
-  startTime: '',
+  beginTime: '',
   endTime: '',
   sort: 1,
-  status: 1,
-  description: ''
+  isEnabled: true,
+  remark: ''
 })
 
 // 表单规则
 const rules = reactive({
   name: [{ required: true, message: '请输入场次名称', trigger: 'blur' }],
-  startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
+  beginTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
   endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
   sort: [{ required: true, message: '请输入排序', trigger: 'blur' }]
 })
@@ -225,15 +224,53 @@ onMounted(() => {
   getList()
 })
 
+// 格式化日期时间
+function formatDateTime(date) {
+  if (!date) return ''
+  const d = new Date(date)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  const seconds = String(d.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
+
 // 获取场次列表
 function getList() {
   loading.value = true
-  // 模拟API调用
-  setTimeout(() => {
-    sessionList.value = mockSessionList
-    pagination.total = mockSessionList.length
-    loading.value = false
-  }, 500)
+  const params = {
+    conditions_: `sort:sort:asc`,
+    activityId: activityId.value,
+    size: pagination.size,
+    current: pagination.current
+  }
+  
+  // 合并查询参数
+  if (queryParams.name) {
+    params.conditions_ += `,name:${queryParams.name}:like`
+  }
+  if (queryParams.status) {
+    params.conditions_ += `,isEnabled:${queryParams.status === '1' ? true : false}:eq`
+  }
+  
+  querySeckillSessionList(params)
+    .then(response => {
+      const data = response.data
+      sessionList.value = data.records || []
+      pagination.total = Number(data.total) || 0
+      pagination.current = Number(data.current) || 1
+      pagination.size = Number(data.size) || 10
+    })
+    .catch(error => {
+      ElMessage.error('获取场次列表失败: ' + (error.message || '未知错误'))
+      sessionList.value = []
+      pagination.total = 0
+    })
+    .finally(() => {
+      loading.value = false
+    })
 }
 
 // 新增场次
@@ -242,11 +279,11 @@ function handleAdd() {
   form.id = ''
   form.activityId = activityId.value
   form.name = ''
-  form.startTime = ''
+  form.beginTime = ''
   form.endTime = ''
   form.sort = 1
-  form.status = 1
-  form.description = ''
+  form.isEnabled = true
+  form.remark = ''
   dialogVisible.value = true
 }
 
@@ -262,28 +299,45 @@ function handleSubmit() {
   formRef.value.validate((valid) => {
     if (valid) {
       loading.value = true
-      // 模拟API调用
-      setTimeout(() => {
-        if (form.id) {
-          // 编辑
-          const index = mockSessionList.findIndex(item => item.id === form.id)
-          if (index !== -1) {
-            mockSessionList[index] = { ...form }
-          }
-          ElMessage.success('编辑成功')
-        } else {
-          // 新增
-          const newSession = {
-            ...form,
-            id: mockSessionList.length + 1
-          }
-          mockSessionList.unshift(newSession)
-          ElMessage.success('新增成功')
-        }
-        dialogVisible.value = false
-        getList()
-        loading.value = false
-      }, 500)
+      const submitData = {
+        activityId: form.activityId,
+        name: form.name,
+        beginTime: formatDateTime(form.beginTime),
+        endTime: formatDateTime(form.endTime),
+        sort: form.sort,
+        isEnabled: form.isEnabled,
+        remark: form.remark
+      }
+      
+      if (form.id) {
+        // 编辑
+        updateSeckillSession({ ...submitData, id: form.id })
+          .then(() => {
+            ElMessage.success('编辑成功')
+            dialogVisible.value = false
+            getList()
+          })
+          .catch(error => {
+            ElMessage.error('编辑失败: ' + (error.message || '未知错误'))
+          })
+          .finally(() => {
+            loading.value = false
+          })
+      } else {
+        // 新增
+        createSeckillSession(submitData)
+          .then(() => {
+            ElMessage.success('新增成功')
+            dialogVisible.value = false
+            getList()
+          })
+          .catch(error => {
+            ElMessage.error('新增失败: ' + (error.message || '未知错误'))
+          })
+          .finally(() => {
+            loading.value = false
+          })
+      }
     }
   })
 }
@@ -296,31 +350,38 @@ function handleDelete(id) {
     type: 'warning'
   }).then(() => {
     loading.value = true
-    // 模拟API调用
-    setTimeout(() => {
-      const index = mockSessionList.findIndex(item => item.id === id)
-      if (index !== -1) {
-        mockSessionList.splice(index, 1)
-      }
-      ElMessage.success('删除成功')
-      getList()
-      loading.value = false
-    }, 500)
+    deleteSeckillSession(id)
+      .then(() => {
+        ElMessage.success('删除成功')
+        getList()
+      })
+      .catch(error => {
+        ElMessage.error('删除失败: ' + (error.message || '未知错误'))
+      })
+      .finally(() => {
+        loading.value = false
+      })
   })
 }
 
 // 状态变更
 function handleStatusChange(row) {
   loading.value = true
-  // 模拟API调用
-  setTimeout(() => {
-    const index = mockSessionList.findIndex(item => item.id === row.id)
-    if (index !== -1) {
-      mockSessionList[index].status = row.status
-    }
-    ElMessage.success('状态更新成功')
-    loading.value = false
-  }, 500)
+  updateSeckillSession({ 
+    id: row.id, 
+    isEnabled: row.isEnabled 
+  })
+    .then(() => {
+      ElMessage.success('状态更新成功')
+    })
+    .catch(error => {
+      ElMessage.error('状态更新失败: ' + (error.message || '未知错误'))
+      // 恢复原状态
+      row.isEnabled = !row.isEnabled
+    })
+    .finally(() => {
+      loading.value = false
+    })
 }
 
 // 查询

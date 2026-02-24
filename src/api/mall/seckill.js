@@ -3,7 +3,7 @@ import request from '@/utils/request'
 // 创建秒杀活动
 export function createSeckillActivity(data) {
   return request({
-    url: '/admin/seckill/activity/create',
+    url: '/admin/seckillActivity/create',
     method: 'post',
     data
   })
@@ -12,7 +12,7 @@ export function createSeckillActivity(data) {
 // 更新秒杀活动
 export function updateSeckillActivity(data) {
   return request({
-    url: '/admin/seckill/activity/update',
+    url: '/admin/seckillActivity/update',
     method: 'post',
     data
   })
@@ -21,7 +21,7 @@ export function updateSeckillActivity(data) {
 // 删除秒杀活动
 export function deleteSeckillActivity(ids) {
   return request({
-    url: '/admin/seckill/activity/delete',
+    url: '/admin/seckillActivity/delete',
     method: 'post',
     data: ids
   })
@@ -30,7 +30,7 @@ export function deleteSeckillActivity(ids) {
 // 获取秒杀活动详情
 export function getSeckillActivityDetail(id) {
   return request({
-    url: `/admin/seckill/activity/detail`,
+    url: `/admin/seckillActivity/detail`,
     method: 'get',
     params: { id }
   })
@@ -39,7 +39,7 @@ export function getSeckillActivityDetail(id) {
 // 查询秒杀活动列表
 export function querySeckillActivityList(params) {
   return request({
-    url: '/admin/seckill/activity/query',
+    url: '/admin/seckillActivity/crud/query',
     method: 'get',
     params
   })
@@ -78,5 +78,50 @@ export function getSeckillMonitorData(activityId) {
     url: `/admin/seckill/monitor/data`,
     method: 'get',
     params: { activityId }
+  })
+}
+
+// 更新秒杀活动状态
+export function updateSeckillActivityStatus(data) {
+  return request({
+    url: '/admin/seckillActivity/updateStatus',
+    method: 'post',
+    data
+  })
+}
+
+// 创建秒杀场次
+export function createSeckillSession(data) {
+  return request({
+    url: '/admin/seckillSession/crud/create',
+    method: 'post',
+    data
+  })
+}
+
+// 更新秒杀场次
+export function updateSeckillSession(data) {
+  return request({
+    url: '/admin/seckillSession/crud/update',
+    method: 'post',
+    data
+  })
+}
+
+// 删除秒杀场次
+export function deleteSeckillSession(ids) {
+  return request({
+    url: '/admin/seckillSession/crud/delete',
+    method: 'post',
+    data: ids
+  })
+}
+
+// 查询秒杀场次列表
+export function querySeckillSessionList(params) {
+  return request({
+    url: '/admin/seckillSession/crud/query',
+    method: 'get',
+    params
   })
 }
