@@ -244,7 +244,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Edit, Delete, Timer, Upload, Picture, Check } from '@element-plus/icons-vue'
-import { querySeckillActivityList, createSeckillActivity, updateSeckillActivity, deleteSeckillActivity, updateSeckillActivityStatus } from '@/api/mall/seckill'
+import { querySeckillActivityList, createSeckillActivity, updateSeckillActivity, deleteSeckillActivity, updateSeckillActivityStatus, updateSeckillActivityEnabled } from '@/api/mall/seckill'
 import { useRouter } from 'vue-router'
 import { getToken } from '@/utils/auth'
 
@@ -607,7 +607,7 @@ function getStatusTagType(status) {
 // 是否启用变更
 function handleEnabledChange(row) {
   loading.value = true
-  updateSeckillActivity({ 
+  updateSeckillActivityEnabled({ 
     id: row.id, 
     isEnabled: row.isEnabled 
   })

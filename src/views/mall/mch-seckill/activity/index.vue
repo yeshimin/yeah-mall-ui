@@ -29,9 +29,6 @@
         <el-button icon="RefreshLeft" @click="resetQuery">
           重置
         </el-button>
-        <el-button type="success" icon="Plus" @click="handleApply">
-          申请参加活动
-        </el-button>
       </el-form-item>
     </el-form>
 
@@ -42,13 +39,15 @@
       style="width: 100%"
     >
       <el-table-column type="index" label="序号" width="80" />
-      <el-table-column prop="activityName" label="活动名称" min-width="200" />
-      <el-table-column prop="startTime" label="开始时间" min-width="180" />
-      <el-table-column prop="endTime" label="结束时间" min-width="180" />
-      <el-table-column prop="status" label="活动状态" width="100">
+      <el-table-column prop="name" label="活动名称" min-width="200" />
+      <el-table-column prop="applyBeginTime" label="报名开始时间" min-width="180" />
+      <el-table-column prop="applyEndTime" label="报名截止时间" min-width="180" />
+      <el-table-column prop="activityBeginTime" label="活动开始时间" min-width="180" />
+      <el-table-column prop="activityEndTime" label="活动结束时间" min-width="180" />
+      <el-table-column prop="status" label="活动状态" width="120">
         <template #default="scope">
-          <el-tag :type="scope.row.status === 1 ? 'success' : scope.row.status === 0 ? 'warning' : 'info'">
-            {{ scope.row.status === 1 ? '进行中' : scope.row.status === 0 ? '未开始' : '已结束' }}
+          <el-tag :type="getStatusTagType(scope.row.status)">
+            {{ getStatusText(scope.row.status) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -71,8 +70,8 @@
             {{ scope.row.sessionCount || 0 }}
           </template>
         </el-table-column>
-        <el-table-column prop="remark" label="活动备注" min-width="200" />
-      <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column prop="description" label="活动描述" min-width="200" />
+      <el-table-column label="操作" width="350" fixed="right">
         <template #default="scope">
           <el-button
             v-if="scope.row.applyStatus === 0"
@@ -103,6 +102,24 @@
             v-hasPermi="['mall:seckill:view']"
           >
             已通过
+          </el-button>
+          <!-- 申请参加活动按钮 -->
+          <el-button
+            size="small"
+            type="primary"
+            @click="handleApply(scope.row)"
+          >
+            <el-icon><Edit /></el-icon>
+            申请参加
+          </el-button>
+          <!-- 秒杀场次按钮 -->
+          <el-button
+            size="small"
+            type="warning"
+            @click="handleViewSessions(scope.row)"
+          >
+            <el-icon><Timer /></el-icon>
+            秒杀场次
           </el-button>
         </template>
       </el-table-column>
@@ -217,41 +234,271 @@
       </template>
     </el-dialog>
 
-    <!-- 场次选择对话框 -->
+
+
+    <!-- 报名申请对话框 -->
     <el-dialog
-      title="选择秒杀场次"
-      v-model="sessionDialogVisible"
-      width="600px"
+      title="申请参加秒杀活动"
+      v-model="applyDialogVisible"
+      width="800px"
     >
-      <div v-if="selectedActivity.hasSession === 1">
-        <el-checkbox v-model="selectAllSessions" @change="handleSelectAllSessions">全选所有场次</el-checkbox>
-        <el-divider />
-        <el-checkbox-group v-model="selectedSessions" class="session-list">
-          <el-checkbox
+      <!-- 场次选择 -->
+      <div class="mb-4">
+        <h4>选择场次</h4>
+        <el-select v-model="selectedSessionId" placeholder="请选择秒杀场次" style="width: 100%">
+          <el-option
             v-for="session in sessionList"
             :key="session.id"
-            :label="session.id"
-            style="display: block; margin-bottom: 10px"
+            :label="`${session.name} (${session.startTime} 至 ${session.endTime})`"
+            :value="session.id"
           >
-            <div class="session-item">
-              <div class="session-name">{{ session.name }}</div>
-              <div class="session-time">{{ session.startTime }} 至 {{ session.endTime }}</div>
-              <div class="session-status">
-                <el-tag :type="session.status === 1 ? 'success' : 'danger'">
+            <div class="session-option">
+              <div class="session-option-name">{{ session.name }}</div>
+              <div class="session-option-time">{{ session.startTime }} 至 {{ session.endTime }}</div>
+              <div class="session-option-status">
+                <el-tag :type="session.status === 1 ? 'success' : 'danger'" size="small">
                   {{ session.status === 1 ? '启用' : '禁用' }}
                 </el-tag>
               </div>
             </div>
-          </el-checkbox>
-        </el-checkbox-group>
+          </el-option>
+        </el-select>
       </div>
-      <div v-else class="no-session">
-        <el-empty description="该活动为单场次，无需选择场次" />
+      
+      <!-- SPU选择 -->
+      <div class="mb-4">
+        <h4>选择商品</h4>
+        <el-button type="primary" size="small" @click="openSpuSelectDialog">
+          <el-icon><Plus /></el-icon>
+          选择商品
+        </el-button>
+        
+        <!-- 已选择的商品信息 -->
+        <div v-if="selectedSpu.id" class="mt-2 spu-selected">
+          <el-card shadow="hover" body-style="padding: 10px">
+            <div class="spu-info">
+              <div class="spu-name">{{ selectedSpu.name }}</div>
+              <div class="spu-image"><img :src="selectedSpu.mainImage" alt="商品图片" style="width: 80px; height: 80px" /></div>
+            </div>
+          </el-card>
+        </div>
+        <el-empty v-else description="请选择商品" class="mt-2" />
       </div>
+      
+      <!-- 商品信息编辑 -->
+      <div v-if="selectedSpu.id" class="mb-4">
+        <h4>商品信息</h4>
+        <el-form :model="applyForm" label-width="100px">
+          <el-form-item label="商品名称">
+            <el-input v-model="applyForm.name" placeholder="请输入商品名称" />
+          </el-form-item>
+          <el-form-item label="商品描述">
+            <el-input v-model="applyForm.detailDesc" type="textarea" placeholder="请输入商品描述" rows="3" />
+          </el-form-item>
+          <el-form-item label="商品主图">
+            <div class="image-preview-container">
+              <el-image
+                v-if="applyForm.mainImage"
+                :src="getImagePreviewUrl(applyForm.mainImage)"
+                fit="cover"
+                style="width: 100px; height: 100px"
+                lazy
+              />
+              <el-empty v-else description="无图片" style="width: 100px; height: 100px" />
+              <el-upload
+                class="avatar-uploader"
+                action="/dev-api/mch/storage/upload"
+                :show-file-list="false"
+                :on-success="handleMainImageUploadSuccess"
+                :before-upload="handleImageUploadBefore"
+                :headers="{
+                  'Authorization': 'Bearer ' + getToken()
+                }"
+              >
+                <el-button size="small" type="primary">更换主图</el-button>
+              </el-upload>
+            </div>
+          </el-form-item>
+          <el-form-item label="轮播图">
+            <div class="carousel-images-container">
+              <div v-if="applyForm.images && applyForm.images.length > 0" class="carousel-images-list">
+                <div v-for="(image, index) in applyForm.images" :key="index" class="carousel-image-item">
+                  <el-image
+                    :src="getImagePreviewUrl(image)"
+                    fit="cover"
+                    style="width: 100px; height: 100px"
+                    lazy
+                  />
+                  <el-button
+                    size="small"
+                    type="danger"
+                    @click="removeCarouselImage(index)"
+                  >
+                    删除
+                  </el-button>
+                </div>
+              </div>
+              <el-empty v-else description="无轮播图" class="carousel-empty" />
+              <el-upload
+                class="carousel-uploader"
+                action="/dev-api/mch/storage/upload"
+                :show-file-list="false"
+                :on-success="handleCarouselImageUploadSuccess"
+                :before-upload="handleImageUploadBefore"
+                :headers="{
+                  'Authorization': 'Bearer ' + getToken()
+                }"
+                multiple
+              >
+                <el-button size="small" type="primary">添加轮播图</el-button>
+              </el-upload>
+            </div>
+          </el-form-item>
+          <el-form-item label="申请备注">
+            <el-input v-model="applyForm.applyRemark" type="textarea" placeholder="请输入申请备注" rows="2" />
+          </el-form-item>
+        </el-form>
+      </div>
+      
+      <!-- SKU选择 -->
+      <div v-if="selectedSpu.id && selectedSpu.skuList" class="mb-4">
+        <h4>选择SKU</h4>
+        <el-checkbox v-model="selectAllSku" @change="handleSelectAllSku">全选所有SKU</el-checkbox>
+        <el-divider />
+        <div v-if="selectedSpu.skuList.length > 0" class="sku-list">
+          <el-card
+            v-for="sku in selectedSpu.skuList"
+            :key="sku.id"
+            shadow="hover"
+            class="mb-3"
+          >
+            <div class="sku-header">
+              <el-checkbox
+                  v-model="skuCheckedMap[sku.id]"
+                  @change="handleSkuCheck(sku.id, $event)"
+                >
+                <span class="sku-name">{{ sku.name }}</span>
+              </el-checkbox>
+            </div>
+            <div class="sku-content">
+              <div class="sku-info-wrapper">
+                <div class="sku-form">
+                  <el-form :model="sku" label-width="100px" size="small">
+                    <el-form-item label="原价">
+                  <el-input v-model="sku.originPrice" type="number" step="0.01" min="0.01" style="width: 120px" />
+                  <span class="unit">元</span>
+                </el-form-item>
+                    <el-form-item label="秒杀价格">
+                      <el-input v-model="sku.seckillPrice" type="number" step="0.01" min="0.01" style="width: 120px" />
+                      <span class="unit">元</span>
+                    </el-form-item>
+                    <el-form-item label="库存">
+                  <el-input v-model="sku.stock" type="number" step="1" min="1" style="width: 120px" />
+                  <span class="unit">件</span>
+                </el-form-item>
+                <el-form-item label="规格编码">
+                  <el-input v-model="sku.specCode" style="width: 200px" />
+                </el-form-item>
+                  </el-form>
+                </div>
+                <div class="sku-image-container">
+                  <div class="image-preview">
+                    <el-image
+                      v-if="sku.mainImage"
+                      :src="getImagePreviewUrl(sku.mainImage)"
+                      fit="cover"
+                      style="width: 100px; height: 100px"
+                      lazy
+                    />
+                    <el-empty v-else description="无图片" style="width: 100px; height: 100px" />
+                  </div>
+                  <div class="image-upload">
+                    <el-upload
+                      class="avatar-uploader"
+                      action="/dev-api/mch/storage/upload"
+                      :show-file-list="false"
+                      :on-success="(response) => handleImageUploadSuccess(response, sku)"
+                      :before-upload="handleImageUploadBefore"
+                      :headers="{
+                        'Authorization': 'Bearer ' + getToken()
+                      }"
+                    >
+                      <el-button size="small" type="primary">更换图片</el-button>
+                    </el-upload>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </el-card>
+        </div>
+        <el-empty v-else description="暂无SKU数据" class="mt-2" />
+      </div>
+      
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="sessionDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmSessionSelection">确定选择</el-button>
+          <el-button @click="applyDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitApply">提交申请</el-button>
+        </span>
+      </template>
+    </el-dialog>
+    
+    <!-- SPU选择对话框 -->
+    <el-dialog
+      title="选择商品"
+      v-model="spuSelectDialogVisible"
+      width="800px"
+    >
+      <!-- SPU搜索 -->
+      <div class="mb-4">
+        <el-input
+          v-model="spuSearchKeyword"
+          placeholder="请输入商品名称搜索"
+          clearable
+          style="width: 100%"
+          @keyup.enter="loadSpuList"
+        >
+          <template #append>
+            <el-button @click="loadSpuList"><el-icon><Search /></el-icon></el-button>
+          </template>
+        </el-input>
+      </div>
+      
+      <!-- SPU列表 -->
+      <div v-if="spuList.length > 0" class="mb-4">
+        <el-table :data="spuList" style="width: 100%" @row-click="handleSpuRowClick">
+          <el-table-column type="index" label="序号" width="80" />
+          <el-table-column prop="name" label="商品名称" min-width="300" />
+          <el-table-column label="商品图片" width="120">
+            <template #default="scope">
+              <el-image
+                v-if="scope.row.mainImage"
+                :src="getImagePreviewUrl(scope.row.mainImage)"
+                fit="cover"
+                style="width: 80px; height: 80px"
+                lazy
+              />
+              <el-empty v-else description="无图片" style="width: 80px; height: 80px" />
+            </template>
+          </el-table-column>
+          <el-table-column prop="createTime" label="创建时间" width="180" />
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="scope">
+              <el-button
+                size="small"
+                type="primary"
+                @click="selectSpu(scope.row)"
+              >
+                选择
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <el-empty v-else description="暂无商品数据" class="mb-4" />
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="spuSelectDialogVisible = false">取消</el-button>
         </span>
       </template>
     </el-dialog>
@@ -259,8 +506,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ElMessage, ElMessageBox, ElIcon } from 'element-plus'
+import { Timer, Edit, Plus, Check, Delete, Search } from '@element-plus/icons-vue'
+import request from '@/utils/request'
+import { getToken } from '@/utils/auth'
+import { queryMchSeckillActivityList, queryMchSeckillSessionList, submitSeckillApply, queryMchSpuList } from '@/api/mall/seckill'
 
 // 表格数据
 const loading = ref(false)
@@ -281,11 +532,41 @@ const dialogTitle = ref('')
 const formRef = ref(null)
 
 // 场次选择相关
-const sessionDialogVisible = ref(false)
 const selectedActivity = ref({})
 const sessionList = ref([])
 const selectedSessions = ref([])
 const selectAllSessions = ref(false)
+
+// 报名申请相关
+const applyDialogVisible = ref(false)
+const spuList = ref([])
+const selectedSpu = ref({})
+const selectedSessionId = ref('')
+const loadingSpu = ref(false)
+const selectAllSku = ref(false)
+const selectedSkuIds = ref([])
+const skuCheckedMap = ref({}) // 用于跟踪每个SKU的选中状态
+
+// SPU选择对话框相关
+const spuSelectDialogVisible = ref(false)
+const spuSearchKeyword = ref('')
+
+// 监听selectedSessionId变化，自动更新applyForm.sessionId
+watch(selectedSessionId, (newVal) => {
+  applyForm.sessionId = newVal
+})
+
+// 报名表单数据
+const applyForm = reactive({
+  sessionId: '',
+  spuId: '',
+  name: '',
+  mainImage: '',
+  detailDesc: '',
+  images: [],
+  skuList: [],
+  applyRemark: ''
+})
 
 // 表单数据
 const form = reactive({
@@ -356,12 +637,41 @@ const mockActivityList = [
 // 加载活动列表
 const getActivityList = () => {
   loading.value = true
-  // 模拟API请求
-  setTimeout(() => {
-    activityList.value = mockActivityList
-    total.value = mockActivityList.length
-    loading.value = false
-  }, 500)
+  const params = {
+    conditions_: `sort:sort:asc`,
+    size: queryParams.pageSize,
+    current: queryParams.pageNum
+  }
+  
+  // 合并查询参数
+  if (queryParams.activityName) {
+    params.conditions_ += `,name:${queryParams.activityName}:like`
+  }
+  if (queryParams.status) {
+    params.conditions_ += `,status:${queryParams.status}:eq`
+  }
+  
+  queryMchSeckillActivityList(params)
+    .then(response => {
+      const data = response.data
+      // 为每个活动添加默认的申请状态、场次设置和场次数量
+      const records = (data.records || []).map(activity => ({
+        ...activity,
+        applyStatus: 0, // 默认未申请
+        hasSession: 1, // 默认多场次
+        sessionCount: 2 // 默认2个场次
+      }))
+      activityList.value = records
+      total.value = Number(data.total) || 0
+    })
+    .catch(error => {
+      ElMessage.error('获取活动列表失败: ' + (error.message || '未知错误'))
+      activityList.value = []
+      total.value = 0
+    })
+    .finally(() => {
+      loading.value = false
+    })
 }
 
 // 搜索
@@ -392,94 +702,385 @@ const handleCurrentChange = (current) => {
 
 // 申请参加活动
 const handleApply = (row) => {
-  if (row && row.hasSession === 1) {
-    // 多场次活动，显示场次选择对话框
-    selectedActivity.value = row
-    loadSessionList(row.id)
-    sessionDialogVisible.value = true
-  } else {
-    // 单场次活动，直接申请
-    confirmApply(row)
-  }
+  selectedActivity.value = row
+  
+  // 加载该活动的所有场次
+  loadSessionList(row.id)
+    .then(() => {
+      // 清空之前的选择
+      selectedSessionId.value = ''
+      applyForm.sessionId = ''
+      selectedSpu.value = {}
+      selectedSkuIds.value = []
+      selectAllSku.value = false
+      
+      // 打开报名申请对话框
+      applyDialogVisible.value = true
+    })
+    .catch(error => {
+      ElMessage.error('加载场次列表失败: ' + (error.message || '未知错误'))
+    })
 }
 
 // 加载场次列表
 const loadSessionList = (activityId) => {
-  // 模拟API请求
-  setTimeout(() => {
-    sessionList.value = [
-      {
-        id: 1,
-        activityId: activityId,
-        name: '上午场',
-        startTime: '2026-02-14 10:00:00',
-        endTime: '2026-02-14 12:00:00',
-        status: 1
-      },
-      {
-        id: 2,
-        activityId: activityId,
-        name: '下午场',
-        startTime: '2026-02-14 14:00:00',
-        endTime: '2026-02-14 16:00:00',
-        status: 1
-      },
-      {
-        id: 3,
-        activityId: activityId,
-        name: '晚上场',
-        startTime: '2026-02-14 19:00:00',
-        endTime: '2026-02-14 21:00:00',
-        status: 0
-      }
-    ]
-    selectedSessions.value = []
-    selectAllSessions.value = false
-  }, 300)
+  return new Promise((resolve, reject) => {
+    loading.value = true
+    const params = {
+      conditions_: `sort:sort:asc`,
+      activityId: activityId
+    }
+    
+    queryMchSeckillSessionList(params)
+      .then(response => {
+        const data = response.data || []
+        // 转换API返回的数据格式，确保与前端组件兼容
+        sessionList.value = data.map(session => ({
+          ...session,
+          startTime: session.beginTime, // 转换为前端使用的字段名
+          endTime: session.endTime,
+          status: session.isEnabled ? 1 : 0 // 转换为前端使用的状态值
+        }))
+        resolve()
+      })
+      .catch(error => {
+        ElMessage.error('获取场次列表失败: ' + (error.message || '未知错误'))
+        sessionList.value = []
+        reject(error)
+      })
+      .finally(() => {
+        loading.value = false
+      })
+  })
 }
 
-// 全选场次
-const handleSelectAllSessions = (value) => {
-  if (value) {
-    // 只选择启用的场次
-    selectedSessions.value = sessionList.value
-      .filter(session => session.status === 1)
-      .map(session => session.id)
+
+
+// 获取店铺ID
+function getShopId() {
+  return localStorage.getItem('shopId') || ''
+}
+
+// 获取图片预览URL
+function getImagePreviewUrl(fileKey) {
+  if (!fileKey) return ''
+  const env = import.meta.env.VITE_APP_ENV
+  if (env === 'development') {
+    const proxyTarget = import.meta.env.VITE_APP_DEV_BACKEND_URL || 'http://localhost:8080'
+    return `${proxyTarget}/public/storage/preview?fileKey=${fileKey}`
   } else {
-    selectedSessions.value = []
+    const baseApi = import.meta.env.VITE_APP_BASE_API || ''
+    return `${baseApi}/public/storage/preview?fileKey=${fileKey}`
   }
 }
 
-// 确认选择场次
-const confirmSessionSelection = () => {
-  if (selectedSessions.value.length === 0) {
-    ElMessage.warning('请至少选择一个场次')
+
+
+// 图片上传成功处理
+const handleImageUploadSuccess = (response, sku) => {
+  if (response.code === 0 && response.data && response.data.fileKey) {
+    sku.mainImage = response.data.fileKey
+    ElMessage.success('图片上传成功')
+  } else {
+    ElMessage.error('图片上传失败: ' + (response.message || '未知错误'))
+  }
+}
+
+// 图片上传前处理
+const handleImageUploadBefore = (file) => {
+  const isImage = file.type.indexOf('image/') === 0
+  const isLt2M = file.size / 1024 / 1024 < 2
+  
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件!')
+    return false
+  }
+  if (!isLt2M) {
+    ElMessage.error('上传图片大小不能超过 2MB!')
+    return false
+  }
+  
+  return true
+}
+
+// 打开SPU选择对话框
+const openSpuSelectDialog = () => {
+  // 打开对话框前加载SPU列表
+  loadSpuList()
+  spuSelectDialogVisible.value = true
+}
+
+// 加载SPU列表
+const loadSpuList = () => {
+  loadingSpu.value = true
+  const params = {
+    shopId: getShopId(),
+    size: 100,
+    current: 1
+  }
+  
+  // 添加搜索关键词
+  if (spuSearchKeyword.value) {
+    params.name = spuSearchKeyword.value
+  }
+  
+  queryMchSpuList(params)
+    .then(response => {
+      const data = response.data
+      spuList.value = data.records || []
+    })
+    .catch(error => {
+      ElMessage.error('获取商品列表失败: ' + (error.message || '未知错误'))
+      spuList.value = []
+    })
+    .finally(() => {
+      loadingSpu.value = false
+    })
+}
+
+// 选择SPU
+const selectSpu = (spu) => {
+  if (spu) {
+    selectedSpu.value = spu
+    // 填充表单数据
+    applyForm.spuId = spu.id
+    applyForm.name = spu.name
+    applyForm.mainImage = spu.mainImage
+    applyForm.detailDesc = spu.detailDesc
+    applyForm.images = [] // 初始化为空，稍后从接口加载
+    applyForm.skuList = []
+    selectedSkuIds.value = []
+    selectAllSku.value = false
+    skuCheckedMap.value = {} // 重置SKU选中状态
+    
+    // 加载该SPU的SKU列表
+    loadSkuList(spu.id)
+    
+    // 加载该SPU的轮播图
+    loadSpuImages(spu.id)
+    
+    // 关闭SPU选择对话框
+    spuSelectDialogVisible.value = false
+  }
+}
+
+// 加载SPU轮播图
+const loadSpuImages = (spuId) => {
+  loadingSpu.value = true
+  const params = {
+    shopId: getShopId(),
+    spuId: spuId,
+    conditions_: 'id:sort:asc',
+    size: 10,
+    current: 1
+  }
+  
+  request({
+    url: '/mch/productSpuImage/crud/query',
+    method: 'get',
+    params
+  })
+    .then(response => {
+      const data = response.data
+      if (data.records) {
+        // 提取轮播图的imageUrl
+        applyForm.images = data.records.map(image => image.imageUrl)
+      }
+    })
+    .catch(error => {
+      ElMessage.error('获取轮播图失败: ' + (error.message || '未知错误'))
+      applyForm.images = []
+    })
+    .finally(() => {
+      loadingSpu.value = false
+    })
+}
+
+// 主图上传成功处理
+const handleMainImageUploadSuccess = (response) => {
+  if (response.code === 0 && response.data && response.data.fileKey) {
+    applyForm.mainImage = response.data.fileKey
+    ElMessage.success('主图上传成功')
+  } else {
+    ElMessage.error('主图上传失败: ' + (response.message || '未知错误'))
+  }
+}
+
+// 轮播图上传成功处理
+const handleCarouselImageUploadSuccess = (response) => {
+  if (response.code === 0 && response.data && response.data.fileKey) {
+    applyForm.images.push(response.data.fileKey)
+    ElMessage.success('轮播图上传成功')
+  } else {
+    ElMessage.error('轮播图上传失败: ' + (response.message || '未知错误'))
+  }
+}
+
+// 移除轮播图
+const removeCarouselImage = (index) => {
+  applyForm.images.splice(index, 1)
+  ElMessage.success('轮播图已删除')
+}
+
+// 加载SKU列表
+const loadSkuList = (spuId) => {
+  loadingSpu.value = true
+  const params = {
+    shopId: getShopId(),
+    spuId: spuId,
+    size: 100,
+    current: 1
+  }
+  
+  // 使用正确的SKU列表接口
+  request({
+    url: '/mch/productSku/crud/query',
+    method: 'get',
+    params
+  })
+    .then(response => {
+      const data = response.data
+      if (data.records) {
+        // 更新selectedSpu的skuList
+        selectedSpu.value.skuList = data.records.map(sku => ({
+          ...sku,
+          // 映射API返回的字段名
+          originPrice: sku.price, // API返回的是price字段
+          // 秒杀价格留空，让用户填写
+          seckillPrice: sku.seckillPrice || ''
+        }))
+      }
+    })
+    .catch(error => {
+      ElMessage.error('获取SKU列表失败: ' + (error.message || '未知错误'))
+      selectedSpu.value.skuList = []
+    })
+    .finally(() => {
+      loadingSpu.value = false
+    })
+}
+
+// 处理表格行点击
+const handleSpuRowClick = (row) => {
+  selectSpu(row)
+}
+
+// 获取SKU的选中状态
+const getSkuChecked = (skuId) => {
+  return selectedSkuIds.value.includes(skuId)
+}
+
+// 处理SKU选择
+const handleSkuCheck = (skuId, checked) => {
+  // 更新skuCheckedMap
+  skuCheckedMap.value[skuId] = checked
+  
+  // 更新selectedSkuIds
+  if (checked) {
+    // 添加到选中列表
+    if (!selectedSkuIds.value.includes(skuId)) {
+      selectedSkuIds.value.push(skuId)
+    }
+  } else {
+    // 从选中列表移除
+    const index = selectedSkuIds.value.indexOf(skuId)
+    if (index > -1) {
+      selectedSkuIds.value.splice(index, 1)
+    }
+  }
+  
+  // 更新全选状态
+  if (selectedSpu.value.skuList) {
+    selectAllSku.value = selectedSkuIds.value.length === selectedSpu.value.skuList.length
+  }
+}
+
+// 全选SKU
+const handleSelectAllSku = (value) => {
+  if (selectedSpu.value.skuList) {
+    // 清空之前的选中状态
+    selectedSkuIds.value = []
+    // 重置skuCheckedMap
+    skuCheckedMap.value = {}
+    
+    if (value) {
+      // 全选
+      selectedSpu.value.skuList.forEach(sku => {
+        skuCheckedMap.value[sku.id] = true
+        selectedSkuIds.value.push(sku.id)
+      })
+    } else {
+      // 全不选
+      selectedSpu.value.skuList.forEach(sku => {
+        skuCheckedMap.value[sku.id] = false
+      })
+    }
+  }
+}
+
+
+
+// 提交报名申请
+const submitApply = () => {
+  if (!applyForm.sessionId) {
+    ElMessage.warning('请选择场次')
     return
   }
   
-  sessionDialogVisible.value = false
-  confirmApply(selectedActivity.value, selectedSessions.value)
-}
-
-// 确认申请
-const confirmApply = (row, selectedSessionIds = []) => {
-  ElMessageBox.confirm('确定要申请参加该活动吗？', '提示', {
+  if (!applyForm.spuId) {
+    ElMessage.warning('请选择商品')
+    return
+  }
+  
+  if (selectedSkuIds.value.length === 0) {
+    ElMessage.warning('请至少选择一个SKU')
+    return
+  }
+  
+  // 构建SKU列表
+  const selectedSkus = selectedSpu.value.skuList.filter(sku => selectedSkuIds.value.includes(sku.id))
+  applyForm.skuList = selectedSkus.map(sku => ({
+    skuId: sku.id,
+    name: sku.name,
+    specCode: sku.specCode, // 使用用户编辑的规格编码
+    originPrice: sku.originPrice, // 使用用户编辑的原价
+    seckillPrice: sku.seckillPrice, // 使用用户编辑的秒杀价格
+    stock: sku.stock, // 使用用户编辑的库存
+    mainImage: sku.mainImage // 使用用户上传的图片
+  }))
+  
+  ElMessageBox.confirm('确定要提交报名申请吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    // 模拟申请操作
-    setTimeout(() => {
-      if (selectedSessionIds.length > 0) {
-        ElMessage.success(`申请成功，已选择 ${selectedSessionIds.length} 个场次，请等待管理员审核`)
-      } else {
-        ElMessage.success('申请成功，请等待管理员审核')
-      }
-      getActivityList()
-    }, 500)
+    loading.value = true
+    submitSeckillApply(applyForm)
+      .then(() => {
+        ElMessage.success('申请提交成功，请等待管理员审核')
+        applyDialogVisible.value = false
+        getActivityList()
+      })
+      .catch(error => {
+        ElMessage.error('申请提交失败: ' + (error.message || '未知错误'))
+      })
+      .finally(() => {
+        loading.value = false
+      })
   }).catch(() => {
-    // 取消申请
+    // 取消提交
   })
+}
+
+// 确认申请
+const confirmApply = (row, selectedSessionIds = []) => {
+  // 保留原函数，以备其他地方调用
+  if (selectedSessionIds.length > 0) {
+    selectedSessionId.value = selectedSessionIds[0]
+    applyForm.sessionId = selectedSessionId.value
+    applyDialogVisible.value = true
+    loadSpuList()
+  }
 }
 
 // 查看活动详情
@@ -487,6 +1088,28 @@ const handleView = (row) => {
   dialogTitle.value = '活动详情'
   Object.assign(form, row)
   dialogVisible.value = true
+}
+
+// 查看秒杀场次
+const handleViewSessions = (row) => {
+  selectedActivity.value = row
+  
+  // 加载该活动的所有场次
+  loadSessionList(row.id)
+    .then(() => {
+      // 清空之前的选择
+      selectedSessionId.value = ''
+      applyForm.sessionId = ''
+      selectedSpu.value = {}
+      selectedSkuIds.value = []
+      selectAllSku.value = false
+      
+      // 打开报名申请对话框
+      applyDialogVisible.value = true
+    })
+    .catch(error => {
+      ElMessage.error('加载场次列表失败: ' + (error.message || '未知错误'))
+    })
 }
 
 // 提交
@@ -498,6 +1121,32 @@ const handleSubmit = () => {
       getActivityList()
     }
   })
+}
+
+// 获取状态文本
+function getStatusText(status) {
+  const statusMap = {
+    '1': '新建',
+    '2': '发布',
+    '3': '开始报名',
+    '4': '结束报名',
+    '5': '开始活动',
+    '6': '结束活动'
+  }
+  return statusMap[status] || '未知'
+}
+
+// 获取状态标签类型
+function getStatusTagType(status) {
+  const typeMap = {
+    '1': 'info',
+    '2': 'primary',
+    '3': 'success',
+    '4': 'warning',
+    '5': 'danger',
+    '6': 'default'
+  }
+  return typeMap[status] || 'info'
 }
 
 // 初始化
@@ -550,5 +1199,225 @@ onMounted(() => {
 .no-session {
   padding: 40px 0;
   text-align: center;
+}
+
+.spu-item {
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 10px;
+  transition: all 0.3s;
+}
+
+.spu-item:hover {
+  border-color: #409eff;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.spu-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.spu-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.spu-image img {
+  border-radius: 4px;
+}
+
+.sku-list {
+  margin-top: 10px;
+}
+
+.sku-item {
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 10px;
+  transition: all 0.3s;
+}
+
+.sku-item:hover {
+  border-color: #409eff;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.sku-header {
+  margin-bottom: 10px;
+}
+
+.sku-content {
+  margin-top: 10px;
+}
+
+.sku-info-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.sku-form {
+  flex: 1;
+  margin-right: 20px;
+}
+
+.sku-image-container {
+  flex-shrink: 0;
+  margin-left: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.image-preview {
+  margin-bottom: 10px;
+}
+
+.image-upload {
+  margin-top: 10px;
+}
+
+.sku-name {
+  font-weight: 500;
+  margin-right: 10px;
+}
+
+.sku-price {
+  color: #606266;
+}
+
+.sku-stock {
+  color: #909399;
+}
+
+.unit {
+  margin-left: 5px;
+  color: #909399;
+}
+
+/* 确保表单行不会因为图片而被挤压 */
+.sku-form .el-form-item {
+  margin-bottom: 12px;
+}
+
+/* 确保输入框有足够的宽度 */
+.sku-form .el-input {
+  min-width: 120px;
+}
+
+/* 图片预览容器样式 */
+.image-preview-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* 轮播图容器样式 */
+.carousel-images-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 轮播图列表样式 */
+.carousel-images-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+
+/* 轮播图项样式 */
+.carousel-image-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+/* 轮播图空状态样式 */
+.carousel-empty {
+  margin: 20px 0;
+}
+
+/* 轮播图上传按钮样式 */
+.carousel-uploader {
+  margin-top: 10px;
+}
+
+/* SKU卡片样式 */
+.mb-3 {
+  margin-bottom: 12px;
+}
+
+/* 表单行样式 */
+.el-form-item {
+  margin-bottom: 12px;
+}
+
+/* 表格行悬停效果 */
+.el-table__row:hover {
+  background-color: #ecf5ff;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.mt-2 {
+  margin-top: 8px;
+}
+
+/* 已选择商品样式 */
+.spu-selected {
+  transition: all 0.3s;
+}
+
+.spu-selected:hover {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* SPU选择对话框样式 */
+.spu-select-dialog .el-dialog__body {
+  padding: 20px;
+}
+
+.spu-select-dialog .el-table {
+  margin-bottom: 20px;
+}
+
+.spu-select-dialog .el-table__row:hover {
+  background-color: #ecf5ff;
+}
+
+.spu-select-dialog .el-image {
+  border-radius: 4px;
+}
+
+/* 场次选择下拉菜单样式 */
+.session-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.session-option-name {
+  font-weight: 500;
+}
+
+.session-option-time {
+  font-size: 12px;
+  color: #606266;
+}
+
+.session-option-status {
+  margin-top: 4px;
 }
 </style>

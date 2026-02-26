@@ -90,6 +90,15 @@ export function updateSeckillActivityStatus(data) {
   })
 }
 
+// 更新秒杀活动是否启用
+export function updateSeckillActivityEnabled(data) {
+  return request({
+    url: '/admin/seckillActivity/updateEnabled',
+    method: 'post',
+    data
+  })
+}
+
 // 创建秒杀场次
 export function createSeckillSession(data) {
   return request({
@@ -121,6 +130,42 @@ export function deleteSeckillSession(ids) {
 export function querySeckillSessionList(params) {
   return request({
     url: '/admin/seckillSession/crud/query',
+    method: 'get',
+    params
+  })
+}
+
+// 商家端查询秒杀活动列表
+export function queryMchSeckillActivityList(params) {
+  return request({
+    url: '/mch/seckillActivity/query',
+    method: 'get',
+    params
+  })
+}
+
+// 商家端查询秒杀活动场次列表
+export function queryMchSeckillSessionList(params) {
+  return request({
+    url: '/mch/seckillActivity/querySession',
+    method: 'get',
+    params
+  })
+}
+
+// 提交秒杀活动报名申请
+export function submitSeckillApply(data) {
+  return request({
+    url: '/mch/seckillActivity/submitApply',
+    method: 'post',
+    data
+  })
+}
+
+// 查询商家SPU列表
+export function queryMchSpuList(params) {
+  return request({
+    url: '/mch/productSpu/query',
     method: 'get',
     params
   })
