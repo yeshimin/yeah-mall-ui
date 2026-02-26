@@ -50,6 +50,8 @@
           </template>
         </el-table-column>
         <el-table-column prop="detailDesc" label="商品描述" min-width="200" />
+        <el-table-column prop="applyRemark" label="申请备注" min-width="150" />
+        <el-table-column prop="auditRemark" label="审核备注" min-width="150" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="scope">
             <template v-if="scope.row.auditStatus === 1">
@@ -92,10 +94,12 @@
           <el-descriptions-item label="场次名称">{{ form.sessionName }}</el-descriptions-item>
           <el-descriptions-item label="商家名称">{{ form.mchName }}</el-descriptions-item>
           <el-descriptions-item label="店铺名称">{{ form.shopName }}</el-descriptions-item>
+          <el-descriptions-item label="申请备注">{{ form.applyRemark || '无' }}</el-descriptions-item>
+          <el-descriptions-item label="审核备注">{{ form.auditRemark || '无' }}</el-descriptions-item>
           <el-descriptions-item label="主图">
             <el-image
               v-if="form.mainImage"
-              :src="`/public/storage/preview?fileKey=${form.mainImage}`"
+              :src="getImagePreviewUrl(form.mainImage)"
               fit="cover"
               style="width: 100px; height: 100px"
               lazy
@@ -119,7 +123,7 @@
             <template #default="scope">
               <el-image
                 v-if="scope.row.mainImage"
-                :src="`/public/storage/preview?fileKey=${scope.row.mainImage}`"
+                :src="getImagePreviewUrl(scope.row.mainImage)"
                 fit="cover"
                 style="width: 80px; height: 80px"
                 lazy
@@ -155,26 +159,56 @@
     </el-dialog>
     
     <!-- 查看详情对话框 -->
-    <el-dialog title="申请详情" v-model="viewDialogVisible" width="600px">
-      <el-descriptions :column="1" border>
-        <el-descriptions-item label="商家名称">{{ viewForm.mchName }}</el-descriptions-item>
-        <el-descriptions-item label="店铺名称">{{ viewForm.shopName }}</el-descriptions-item>
-        <el-descriptions-item label="商品名称">{{ viewForm.spuName }}</el-descriptions-item>
-        <el-descriptions-item label="活动名称">{{ viewForm.activityName }}</el-descriptions-item>
-        <el-descriptions-item label="场次名称">{{ viewForm.sessionName }}</el-descriptions-item>
-        <el-descriptions-item label="审核状态">{{ getStatusText(viewForm.auditStatus) }}</el-descriptions-item>
-        <el-descriptions-item label="商品描述">{{ viewForm.detailDesc }}</el-descriptions-item>
-        <el-descriptions-item label="主图">
-          <el-image
-            v-if="viewForm.mainImage"
-            :src="`/public/storage/preview?fileKey=${viewForm.mainImage}`"
-            fit="cover"
-            style="width: 100px; height: 100px"
-            lazy
-          />
-          <span v-else>无图片</span>
-        </el-descriptions-item>
-      </el-descriptions>
+    <el-dialog title="申请详情" v-model="viewDialogVisible" width="800px">
+      <!-- SPU信息 -->
+      <div class="mb-4">
+        <h4>商品信息</h4>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="商品名称">{{ viewForm.spuName }}</el-descriptions-item>
+          <el-descriptions-item label="活动名称">{{ viewForm.activityName }}</el-descriptions-item>
+          <el-descriptions-item label="场次名称">{{ viewForm.sessionName }}</el-descriptions-item>
+          <el-descriptions-item label="商家名称">{{ viewForm.mchName }}</el-descriptions-item>
+          <el-descriptions-item label="店铺名称">{{ viewForm.shopName }}</el-descriptions-item>
+          <el-descriptions-item label="审核状态">{{ getStatusText(viewForm.auditStatus) }}</el-descriptions-item>
+          <el-descriptions-item label="申请备注">{{ viewForm.applyRemark || '无' }}</el-descriptions-item>
+          <el-descriptions-item label="审核备注">{{ viewForm.auditRemark || '无' }}</el-descriptions-item>
+          <el-descriptions-item label="主图">
+            <el-image
+              v-if="viewForm.mainImage"
+              :src="getImagePreviewUrl(viewForm.mainImage)"
+              fit="cover"
+              style="width: 100px; height: 100px"
+              lazy
+            />
+            <span v-else>无图片</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="商品描述" :span="2">{{ viewForm.detailDesc }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+      
+      <!-- SKU信息 -->
+      <div class="mb-4" v-if="viewForm.skuList && viewForm.skuList.length > 0">
+        <h4>SKU信息</h4>
+        <el-table :data="viewForm.skuList" style="width: 100%">
+          <el-table-column prop="name" label="SKU名称" min-width="200" />
+          <el-table-column prop="specCode" label="规格编码" width="150" />
+          <el-table-column prop="originPrice" label="原价" width="100" />
+          <el-table-column prop="seckillPrice" label="秒杀价格" width="100" />
+          <el-table-column prop="stock" label="库存" width="80" />
+          <el-table-column label="SKU图片" width="120">
+            <template #default="scope">
+              <el-image
+                v-if="scope.row.mainImage"
+                :src="getImagePreviewUrl(scope.row.mainImage)"
+                fit="cover"
+                style="width: 80px; height: 80px"
+                lazy
+              />
+              <span v-else>无图片</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="viewDialogVisible = false">关闭</el-button>
@@ -185,11 +219,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Check, Close, View } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { querySeckillActivityList } from '@/api/mall/seckill'
+import { useRoute } from 'vue-router'
 
 // 响应式数据
 const loading = ref(false)
@@ -197,6 +232,7 @@ const dialogVisible = ref(false)
 const viewDialogVisible = ref(false)
 const dialogTitle = ref('审核')
 const formRef = ref(null)
+const route = useRoute()
 
 // 查询参数
 const queryParams = reactive({
@@ -303,6 +339,17 @@ const mockAuditList = [
 // 初始化
 onMounted(() => {
   loadActivityList()
+  // 检查URL参数中是否有activityId
+  const activityId = route.query.activityId
+  if (activityId) {
+    // 延迟执行，确保活动列表已加载
+    setTimeout(() => {
+      queryParams.activityId = activityId
+      handleActivityChange(activityId)
+      // 自动执行查询
+      handleQuery()
+    }, 100)
+  }
   // 不自动加载审核列表，需要先选择活动
 })
 
@@ -414,19 +461,40 @@ function getList() {
 // 审核
 function handleAudit(row) {
   dialogTitle.value = '审核'
-  // 填充表单数据
-  form.applyId = row.applyId
-  form.spuName = row.spuName
-  form.activityName = row.activityName
-  form.sessionName = row.sessionName
-  form.mchName = row.mchName
-  form.shopName = row.shopName
-  form.mainImage = row.mainImage
-  form.detailDesc = row.detailDesc
-  form.skuList = row.skuList || []
-  form.status = '' // 清空审核结果
-  form.auditRemark = '' // 清空审核意见
-  dialogVisible.value = true
+  // 先获取申请详情
+  loading.value = true
+  request({
+    url: '/admin/seckillActivityApply/detail',
+    method: 'get',
+    params: {
+      id: row.applyId
+    }
+  })
+  .then(response => {
+    const data = response.data
+    if (data) {
+      // 填充表单数据
+      form.applyId = data.apply.id
+      form.spuName = data.spu.name
+      form.activityName = row.activityName
+      form.sessionName = row.sessionName
+      form.mchName = row.mchName
+      form.shopName = row.shopName
+      form.mainImage = data.spu.mainImage
+      form.detailDesc = data.spu.detailDesc
+      form.applyRemark = data.apply.applyRemark
+      form.skuList = data.skuList || []
+      form.status = '' // 清空审核结果
+      form.auditRemark = '' // 清空审核意见
+      dialogVisible.value = true
+    }
+  })
+  .catch(error => {
+    ElMessage.error('获取申请详情失败: ' + (error.message || '未知错误'))
+  })
+  .finally(() => {
+    loading.value = false
+  })
 }
 
 // 提交审核
@@ -463,8 +531,54 @@ function handleAuditSubmit() {
 
 // 查看详情
 function handleView(row) {
-  Object.assign(viewForm, row)
-  viewDialogVisible.value = true
+  // 先获取申请详情
+  loading.value = true
+  request({
+    url: '/admin/seckillActivityApply/detail',
+    method: 'get',
+    params: {
+      id: row.applyId
+    }
+  })
+  .then(response => {
+    const data = response.data
+    if (data) {
+      // 填充查看表单数据
+      Object.assign(viewForm, {
+        mchName: row.mchName,
+        shopName: row.shopName,
+        spuName: data.spu.name,
+        activityName: row.activityName,
+        sessionName: row.sessionName,
+        auditStatus: data.apply.auditStatus,
+        detailDesc: data.spu.detailDesc,
+        mainImage: data.spu.mainImage,
+        applyRemark: data.apply.applyRemark,
+        auditRemark: data.apply.auditRemark,
+        skuList: data.skuList || []
+      })
+      viewDialogVisible.value = true
+    }
+  })
+  .catch(error => {
+    ElMessage.error('获取申请详情失败: ' + (error.message || '未知错误'))
+  })
+  .finally(() => {
+    loading.value = false
+  })
+}
+
+// 获取图片预览URL
+function getImagePreviewUrl(fileKey) {
+  if (!fileKey) return ''
+  const env = import.meta.env.VITE_APP_ENV
+  if (env === 'development') {
+    const proxyTarget = import.meta.env.VITE_APP_DEV_BACKEND_URL || 'http://localhost:8080'
+    return `${proxyTarget}/public/storage/preview?fileKey=${fileKey}`
+  } else {
+    const baseApi = import.meta.env.VITE_APP_BASE_API || ''
+    return `${baseApi}/public/storage/preview?fileKey=${fileKey}`
+  }
 }
 
 // 获取状态文本

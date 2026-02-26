@@ -54,7 +54,7 @@
 </el-table-column>
     </el-table>
 
-    <pagination v-show="total > 0" :total="total" v-model:page="queryParams.current" v-model:limit="queryParams.size"
+    <pagination v-show="total > 0" :total="Number(total)" v-model:page="queryParams.current" v-model:limit="queryParams.size"
       @pagination="getList" />
 
     <el-dialog v-model="createDialogVisible" title="创建商品" width="800px" @close="createDialogVisible = false">

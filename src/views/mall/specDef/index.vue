@@ -235,7 +235,7 @@ async function getList() {
     }
     const res = await listSpecDef(params)
     tableData.value = res.data?.records || []
-    total.value = res.data?.total || 0
+    total.value = Number(res.data?.total || 0)
   } catch (e) {
     tableData.value = []
     total.value = 0

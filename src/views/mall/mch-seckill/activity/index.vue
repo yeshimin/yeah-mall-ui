@@ -112,15 +112,7 @@
             <el-icon><Edit /></el-icon>
             申请参加
           </el-button>
-          <!-- 秒杀场次按钮 -->
-          <el-button
-            size="small"
-            type="warning"
-            @click="handleViewSessions(scope.row)"
-          >
-            <el-icon><Timer /></el-icon>
-            秒杀场次
-          </el-button>
+
         </template>
       </el-table-column>
     </el-table>
@@ -273,16 +265,7 @@
           选择商品
         </el-button>
         
-        <!-- 已选择的商品信息 -->
-        <div v-if="selectedSpu.id" class="mt-2 spu-selected">
-          <el-card shadow="hover" body-style="padding: 10px">
-            <div class="spu-info">
-              <div class="spu-name">{{ selectedSpu.name }}</div>
-              <div class="spu-image"><img :src="selectedSpu.mainImage" alt="商品图片" style="width: 80px; height: 80px" /></div>
-            </div>
-          </el-card>
-        </div>
-        <el-empty v-else description="请选择商品" class="mt-2" />
+
       </div>
       
       <!-- 商品信息编辑 -->
@@ -354,9 +337,7 @@
               </el-upload>
             </div>
           </el-form-item>
-          <el-form-item label="申请备注">
-            <el-input v-model="applyForm.applyRemark" type="textarea" placeholder="请输入申请备注" rows="2" />
-          </el-form-item>
+
         </el-form>
       </div>
       
@@ -432,6 +413,16 @@
           </el-card>
         </div>
         <el-empty v-else description="暂无SKU数据" class="mt-2" />
+      </div>
+      
+      <!-- 申请备注 -->
+      <div class="mb-4">
+        <h4>申请备注</h4>
+        <el-form :model="applyForm" label-width="100px">
+          <el-form-item label="申请备注">
+            <el-input v-model="applyForm.applyRemark" type="textarea" placeholder="请输入申请备注" rows="3" />
+          </el-form-item>
+        </el-form>
       </div>
       
       <template #footer>
@@ -946,8 +937,8 @@ const loadSkuList = (spuId) => {
           ...sku,
           // 映射API返回的字段名
           originPrice: sku.price, // API返回的是price字段
-          // 秒杀价格留空，让用户填写
-          seckillPrice: sku.seckillPrice || ''
+          // 秒杀价格默认与原价相同
+          seckillPrice: sku.seckillPrice || sku.price
         }))
       }
     })
@@ -1090,27 +1081,7 @@ const handleView = (row) => {
   dialogVisible.value = true
 }
 
-// 查看秒杀场次
-const handleViewSessions = (row) => {
-  selectedActivity.value = row
-  
-  // 加载该活动的所有场次
-  loadSessionList(row.id)
-    .then(() => {
-      // 清空之前的选择
-      selectedSessionId.value = ''
-      applyForm.sessionId = ''
-      selectedSpu.value = {}
-      selectedSkuIds.value = []
-      selectAllSku.value = false
-      
-      // 打开报名申请对话框
-      applyDialogVisible.value = true
-    })
-    .catch(error => {
-      ElMessage.error('加载场次列表失败: ' + (error.message || '未知错误'))
-    })
-}
+
 
 // 提交
 const handleSubmit = () => {

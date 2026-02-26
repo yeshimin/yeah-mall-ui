@@ -77,7 +77,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="description" label="活动描述" />
-      <el-table-column label="操作" width="400" fixed="right">
+      <el-table-column label="操作" width="450" fixed="right">
         <template #default="scope">
           <el-button type="primary" size="small" @click="handleEdit(scope.row)" plain>
             <el-icon><Edit /></el-icon>
@@ -141,6 +141,10 @@
           <el-button type="danger" size="small" @click="handleDelete(scope.row.id)" plain>
             <el-icon><Delete /></el-icon>
             删除
+          </el-button>
+          <el-button type="info" size="small" @click="handleAudit(scope.row)" plain>
+            <el-icon><Check /></el-icon>
+            申请审核
           </el-button>
         </template>
       </el-table-column>
@@ -657,6 +661,11 @@ function handleStatusUpdate(row, newStatus) {
         loading.value = false
       })
   })
+}
+
+// 申请审核
+function handleAudit(row) {
+  router.push(`/mall/seckill/audit?activityId=${row.id}`)
 }
 </script>
 
