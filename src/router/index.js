@@ -124,6 +124,13 @@ export const dynamicRoutes = [
             component: () => import('@/views/mall/mch-seckill/product/index.vue'),
             name: 'MallSeckillProduct',
             meta: { title: '商品管理', icon: 'goods', noCache: true }
+          },
+          // 申请记录
+          {
+            path: 'apply',
+            component: () => import('@/views/mall/mch-seckill/apply/index.vue'),
+            name: 'MallSeckillApply',
+            meta: { title: '申请记录', icon: 'document', noCache: true }
           }
         ]
       },
