@@ -79,6 +79,8 @@
           <el-descriptions-item label="商品名称">{{ viewForm.spuName }}</el-descriptions-item>
           <el-descriptions-item label="活动名称">{{ viewForm.activityName }}</el-descriptions-item>
           <el-descriptions-item label="场次名称">{{ viewForm.sessionName }}</el-descriptions-item>
+          <el-descriptions-item label="商家名称">{{ viewForm.mchName }}</el-descriptions-item>
+          <el-descriptions-item label="店铺名称">{{ viewForm.shopName }}</el-descriptions-item>
           <el-descriptions-item label="审核状态">{{ getStatusText(viewForm.auditStatus) }}</el-descriptions-item>
           <el-descriptions-item label="申请备注">{{ viewForm.applyRemark || '无' }}</el-descriptions-item>
           <el-descriptions-item label="审核备注">{{ viewForm.auditRemark || '无' }}</el-descriptions-item>
@@ -287,6 +289,8 @@ function handleView(row) {
     if (data) {
       // 填充查看表单数据
       Object.assign(viewForm, {
+        mchName: row.mchName,
+        shopName: row.shopName,
         spuName: data.spu.name,
         activityName: row.activityName,
         sessionName: row.sessionName,
