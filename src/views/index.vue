@@ -1,6 +1,6 @@
 <template>
   <div class="app-container home">
-    yeah-boot-ui: https://github.com/yeshimin/yeah-boot-ui
+    yeah-mall-ui: https://github.com/yeshimin/yeah-mall-ui
   </div>
 </template>
 
