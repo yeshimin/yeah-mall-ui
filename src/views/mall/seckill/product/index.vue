@@ -1,123 +1,207 @@
 <template>
-  <div class="seckill-manage">
-    <!-- 查询条件 -->
-    <el-form :inline="true" :model="queryParams" class="mb8">
-        <el-form-item label="商品名称" prop="name">
-          <el-input v-model="queryParams.name" placeholder="请输入商品名称" clearable style="width: 200px" />
-        </el-form-item>
-        <el-form-item label="商品状态" prop="status">
-          <el-select v-model="queryParams.status" placeholder="请选择商品状态" clearable style="width: 120px">
-            <el-option label="启用" value="1" />
-            <el-option label="禁用" value="0" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="活动名称" prop="activityId">
-          <el-select v-model="queryParams.activityId" placeholder="请选择活动" clearable style="width: 180px">
-            <el-option v-for="activity in activityList" :key="activity.id" :label="activity.name" :value="activity.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">
-            <el-icon><Search /></el-icon>
-            查询
-          </el-button>
-          <el-button @click="resetQuery">
-            <el-icon><Refresh /></el-icon>
-            重置
-          </el-button>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>
-            新增商品
-          </el-button>
-        </el-form-item>
-      </el-form>
-      
-      <!-- 商品列表 -->
-      <el-table v-loading="loading" :data="productList" style="width: 100%">
-        <el-table-column label="序号" type="index" width="80" />
-        <el-table-column prop="name" label="商品名称" width="200" />
-        <el-table-column prop="activityName" label="所属活动" width="180" />
-        <el-table-column prop="originalPrice" label="原价" width="100">
-          <template #default="scope">
-            ¥{{ scope.row.originalPrice.toFixed(2) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="seckillPrice" label="秒杀价" width="100">
-          <template #default="scope">
-            ¥{{ scope.row.seckillPrice.toFixed(2) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="stock" label="库存" width="80" />
-        <el-table-column prop="soldCount" label="已售" width="80" />
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="scope">
-            <el-switch 
-              v-model="scope.row.status" 
-              :active-value="1" 
-              :inactive-value="0"
-              @change="handleStatusChange(scope.row)"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column prop="description" label="商品描述" />
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="scope">
-            <el-button type="primary" size="small" @click="handleEdit(scope.row)" plain>
-              <el-icon><Edit /></el-icon>
-              编辑
-            </el-button>
-            <el-button type="danger" size="small" @click="handleDelete(scope.row.id)" plain>
-              <el-icon><Delete /></el-icon>
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      
-      <!-- 分页 -->
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="pagination.current"
-          v-model:page-size="pagination.size"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="Number(pagination.total)"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+  <div class="app-container">
+    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
+      <el-form-item label="活动名称" prop="activityId">
+        <el-select
+          v-model="queryParams.activityId"
+          placeholder="请选择活动"
+          clearable
+          style="width: 180px"
+          @change="handleActivityChange"
+        >
+          <el-option v-for="activity in activityList" :key="activity.id" :label="activity.name" :value="activity.id" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="场次名称" prop="sessionId">
+        <el-select
+          v-model="queryParams.sessionId"
+          placeholder="请选择场次"
+          clearable
+          style="width: 180px"
+        >
+          <el-option v-for="session in sessionList" :key="session.id" :label="session.name" :value="session.id" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="审核状态" prop="auditStatus">
+        <el-select
+          v-model="queryParams.auditStatus"
+          placeholder="请选择审核状态"
+          clearable
+          style="width: 120px"
+        >
+          <el-option label="待审核" value="1" />
+          <el-option label="审核通过" value="2" />
+          <el-option label="审核驳回" value="3" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="商家名称" prop="mchName">
+        <el-input
+          v-model="queryParams.mchName"
+          placeholder="请输入商家名称"
+          clearable
+          style="width: 150px"
+          @keyup.enter="handleQuery"
         />
+      </el-form-item>
+      <el-form-item label="店铺名称" prop="shopName">
+        <el-input
+          v-model="queryParams.shopName"
+          placeholder="请输入店铺名称"
+          clearable
+          style="width: 150px"
+        />
+      </el-form-item>
+      <el-form-item label="商品名称" prop="spuName">
+        <el-input
+          v-model="queryParams.spuName"
+          placeholder="请输入商品名称"
+          clearable
+          style="width: 180px"
+        />
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
+      </el-form-item>
+    </el-form>
+
+    <el-row :gutter="10" class="mb8">
+      <right-toolbar v-model:showSearch="showSearch" @queryTable="getProductList" />
+    </el-row>
+
+    <!-- 商品列表 -->
+    <el-table
+      v-loading="loading"
+      :data="productList"
+      style="width: 100%"
+    >
+      <el-table-column type="index" label="序号" width="80" />
+      <el-table-column label="商品图片" min-width="100">
+        <template #default="scope">
+          <el-image
+            v-if="scope.row.mainImage"
+            :src="getImagePreviewUrl(scope.row.mainImage)"
+            fit="cover"
+            style="width: 80px; height: 80px"
+            lazy
+          />
+          <el-empty v-else description="无图片" style="width: 80px; height: 80px" />
+        </template>
+      </el-table-column>
+      <el-table-column prop="name" label="商品名称" min-width="200" />
+      <el-table-column prop="activityName" label="活动名称" min-width="150" />
+      <el-table-column prop="sessionName" label="场次名称" min-width="150" />
+      <el-table-column prop="mchName" label="商家名称" min-width="120" />
+      <el-table-column prop="shopName" label="店铺名称" min-width="120" />
+      <el-table-column prop="sales" label="销量" width="100" />
+      <el-table-column prop="auditStatus" label="审核状态" width="100">
+        <template #default="scope">
+          <el-tag :type="getStatusTagType(scope.row.auditStatus)">
+            {{ getStatusText(scope.row.auditStatus) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="150" fixed="right">
+        <template #default="scope">
+          <el-button
+            size="small"
+            type="primary"
+            icon="View"
+            @click="handleView(scope.row)"
+          >
+            查看
+          </el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <!-- 分页 -->
+    <el-pagination
+      v-model:current-page="queryParams.current"
+      v-model:page-size="queryParams.size"
+      :page-sizes="[10, 20, 30, 50]"
+      layout="total, sizes, prev, pager, next, jumper"
+      :total="Number(total)"
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+    />
+
+    <!-- 查看详情对话框 -->
+    <el-dialog title="商品详情" v-model="viewDialogVisible" width="800px">
+      <!-- 商品基本信息 -->
+      <div class="mb-4">
+        <h4>基本信息</h4>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="商品名称">{{ viewForm.name }}</el-descriptions-item>
+          <el-descriptions-item label="活动名称">{{ viewForm.activityName }}</el-descriptions-item>
+          <el-descriptions-item label="场次名称">{{ viewForm.sessionName }}</el-descriptions-item>
+          <el-descriptions-item label="销量">{{ viewForm.sales }}</el-descriptions-item>
+          <el-descriptions-item label="审核状态">{{ getStatusText(viewForm.auditStatus) }}</el-descriptions-item>
+          <el-descriptions-item label="商家名称">{{ viewForm.mchName }}</el-descriptions-item>
+          <el-descriptions-item label="店铺名称">{{ viewForm.shopName }}</el-descriptions-item>
+          <el-descriptions-item label="主图">
+            <el-image
+              v-if="viewForm.mainImage"
+              :src="getImagePreviewUrl(viewForm.mainImage)"
+              fit="cover"
+              style="width: 100px; height: 100px"
+              lazy
+            />
+            <span v-else>无图片</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="商品描述" :span="2">{{ viewForm.detailDesc }}</el-descriptions-item>
+        </el-descriptions>
       </div>
-    
-    <!-- 新增/编辑对话框 -->
-    <el-dialog :title="dialogTitle" v-model="dialogVisible" width="600px">
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
-        <el-form-item label="商品名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入商品名称" />
-        </el-form-item>
-        <el-form-item label="所属活动" prop="activityId">
-          <el-select v-model="form.activityId" placeholder="请选择活动" style="width: 100%">
-            <el-option v-for="activity in activityList" :key="activity.id" :label="activity.name" :value="activity.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="原价" prop="originalPrice">
-          <el-input-number v-model="form.originalPrice" :min="0" :step="0.01" :precision="2" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="秒杀价" prop="seckillPrice">
-          <el-input-number v-model="form.seckillPrice" :min="0" :step="0.01" :precision="2" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="库存" prop="stock">
-          <el-input-number v-model="form.stock" :min="0" :step="1" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="商品状态" prop="status">
-          <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
-        </el-form-item>
-        <el-form-item label="商品描述" prop="description">
-          <el-input v-model="form.description" type="textarea" placeholder="请输入商品描述" rows="3" />
-        </el-form-item>
-      </el-form>
+      
+      <!-- 轮播图 -->
+      <div class="mb-4" v-if="viewForm.images && viewForm.images.length > 0">
+        <h4>轮播图</h4>
+        <div class="carousel-images">
+          <el-image
+            v-for="(image, index) in viewForm.images"
+            :key="index"
+            :src="getImagePreviewUrl(image)"
+            fit="cover"
+            style="width: 100px; height: 100px; margin-right: 10px"
+            lazy
+          />
+        </div>
+      </div>
+      
+      <!-- SKU信息 -->
+      <div class="mb-4" v-if="viewForm.skuList && viewForm.skuList.length > 0">
+        <h4>SKU信息</h4>
+        <el-table :data="viewForm.skuList" style="width: 100%">
+          <el-table-column prop="name" label="SKU名称" min-width="200" />
+          <el-table-column prop="specCode" label="规格编码" width="150" />
+          <el-table-column prop="originPrice" label="原价" width="100">
+            <template #default="scope">
+              ¥{{ scope.row.originPrice }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="seckillPrice" label="秒杀价格" width="100">
+            <template #default="scope">
+              ¥{{ scope.row.seckillPrice }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="stock" label="库存" width="80" />
+          <el-table-column label="SKU图片" width="120">
+            <template #default="scope">
+              <el-image
+                v-if="scope.row.mainImage"
+                :src="getImagePreviewUrl(scope.row.mainImage)"
+                fit="cover"
+                style="width: 80px; height: 80px"
+                lazy
+              />
+              <span v-else>无图片</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
+          <el-button @click="viewDialogVisible = false">关闭</el-button>
         </span>
       </template>
     </el-dialog>
@@ -126,267 +210,300 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Edit, Delete } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { Search, Refresh, View } from '@element-plus/icons-vue'
+import { useRoute } from 'vue-router'
+import request from '@/utils/request'
+import RightToolbar from '@/components/RightToolbar/index.vue'
 
-// 响应式数据
+// 路由
+const route = useRoute()
+
+// 表格数据
 const loading = ref(false)
-const dialogVisible = ref(false)
-const dialogTitle = ref('新增商品')
-const formRef = ref(null)
+const productList = ref([])
+const total = ref(0)
+const showSearch = ref(true)
 
 // 查询参数
 const queryParams = reactive({
-  name: '',
-  status: '',
-  activityId: ''
-})
-
-// 分页参数
-const pagination = reactive({
   current: 1,
   size: 10,
-  total: 0
-})
-
-// 表单数据
-const form = reactive({
-  id: '',
-  name: '',
   activityId: '',
-  originalPrice: 0,
-  seckillPrice: 0,
-  stock: 0,
-  soldCount: 0,
-  status: 1,
-  description: ''
+  sessionId: '',
+  auditStatus: '',
+  mchName: '',
+  shopName: '',
+  spuName: ''
 })
 
-// 表单规则
-const rules = reactive({
-  name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
-  activityId: [{ required: true, message: '请选择所属活动', trigger: 'change' }],
-  originalPrice: [{ required: true, message: '请输入原价', trigger: 'blur' }],
-  seckillPrice: [{ required: true, message: '请输入秒杀价', trigger: 'blur' }],
-  stock: [{ required: true, message: '请输入库存', trigger: 'blur' }]
-})
+// 查看对话框
+const viewDialogVisible = ref(false)
+
+// 查看表单数据
+const viewForm = reactive({})
 
 // 活动列表
-const activityList = ref([
-  { id: 1, name: '春节秒杀活动' },
-  { id: 2, name: '情人节秒杀' },
-  { id: 3, name: '元宵节秒杀' }
-])
+const activityList = ref([])
 
-// 商品列表
-const productList = ref([])
-
-// 模拟数据
-const mockProductList = [
-  {
-    id: 1,
-    name: 'iPhone 15 Pro',
-    activityId: 1,
-    activityName: '春节秒杀活动',
-    originalPrice: 9999,
-    seckillPrice: 7999,
-    stock: 100,
-    soldCount: 32,
-    status: 1,
-    description: '全新iPhone 15 Pro，搭载A17 Pro芯片'
-  },
-  {
-    id: 2,
-    name: 'MacBook Air M3',
-    activityId: 1,
-    activityName: '春节秒杀活动',
-    originalPrice: 8999,
-    seckillPrice: 7499,
-    stock: 50,
-    soldCount: 15,
-    status: 1,
-    description: '轻薄便携，性能强劲'
-  },
-  {
-    id: 3,
-    name: 'AirPods Pro 2',
-    activityId: 2,
-    activityName: '情人节秒杀',
-    originalPrice: 1899,
-    seckillPrice: 1299,
-    stock: 200,
-    soldCount: 88,
-    status: 1,
-    description: '主动降噪，通透模式'
-  },
-  {
-    id: 4,
-    name: 'Apple Watch Series 9',
-    activityId: 2,
-    activityName: '情人节秒杀',
-    originalPrice: 2999,
-    seckillPrice: 2499,
-    stock: 80,
-    soldCount: 25,
-    status: 0,
-    description: '健康监测，运动追踪'
-  }
-]
+// 场次列表
+const sessionList = ref([])
 
 // 初始化
 onMounted(() => {
-  getList()
+  loadActivityList().then(() => {
+    // 检查URL中是否有活动ID参数
+    const activityId = route.query.activityId
+    if (activityId) {
+      // 设置活动ID到查询参数
+      queryParams.activityId = activityId
+      // 加载对应的场次列表
+      loadSessionList(activityId)
+    }
+    // 页面加载时自动获取一次商品列表
+    getProductList()
+  })
 })
 
-// 获取商品列表
-function getList() {
-  loading.value = true
-  // 模拟API调用
-  setTimeout(() => {
-    productList.value = mockProductList
-    pagination.total = mockProductList.length
-    loading.value = false
-  }, 500)
-}
-
-// 新增商品
-function handleAdd() {
-  dialogTitle.value = '新增商品'
-  form.id = ''
-  form.name = ''
-  form.activityId = ''
-  form.originalPrice = 0
-  form.seckillPrice = 0
-  form.stock = 0
-  form.soldCount = 0
-  form.status = 1
-  form.description = ''
-  dialogVisible.value = true
-}
-
-// 编辑商品
-function handleEdit(row) {
-  dialogTitle.value = '编辑商品'
-  Object.assign(form, row)
-  dialogVisible.value = true
-}
-
-// 提交表单
-function handleSubmit() {
-  formRef.value.validate((valid) => {
-    if (valid) {
-      loading.value = true
-      // 模拟API调用
-      setTimeout(() => {
-        if (form.id) {
-          // 编辑
-          const index = mockProductList.findIndex(item => item.id === form.id)
-          if (index !== -1) {
-            mockProductList[index] = {
-              ...form,
-              activityName: activityList.value.find(a => a.id === form.activityId)?.name || ''
-            }
-          }
-          ElMessage.success('编辑成功')
-        } else {
-          // 新增
-          const newProduct = {
-            ...form,
-            id: mockProductList.length + 1,
-            soldCount: 0,
-            activityName: activityList.value.find(a => a.id === form.activityId)?.name || ''
-          }
-          mockProductList.unshift(newProduct)
-          ElMessage.success('新增成功')
-        }
-        dialogVisible.value = false
-        getList()
-        loading.value = false
-      }, 500)
-    }
-  })
-}
-
-// 删除商品
-function handleDelete(id) {
-  ElMessageBox.confirm('确定要删除该商品吗？', '警告', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    loading.value = true
-    // 模拟API调用
-    setTimeout(() => {
-      const index = mockProductList.findIndex(item => item.id === id)
-      if (index !== -1) {
-        mockProductList.splice(index, 1)
+// 加载活动列表
+function loadActivityList() {
+  return new Promise((resolve, reject) => {
+    request({
+      url: '/admin/seckillActivity/crud/query',
+      method: 'get',
+      params: {
+        conditions_: 'sort:sort:asc',
+        size: 100,
+        current: 1
       }
-      ElMessage.success('删除成功')
-      getList()
-      loading.value = false
-    }, 500)
+    })
+      .then(response => {
+        const data = response.data
+        if (data.records) {
+          activityList.value = data.records
+        }
+        resolve()
+      })
+      .catch(error => {
+        ElMessage.error('获取活动列表失败: ' + (error.message || '未知错误'))
+        activityList.value = []
+        resolve() // 即使失败也 resolve，确保初始化流程继续
+      })
   })
 }
 
-// 状态变更
-function handleStatusChange(row) {
-  loading.value = true
-  // 模拟API调用
-  setTimeout(() => {
-    const index = mockProductList.findIndex(item => item.id === row.id)
-    if (index !== -1) {
-      mockProductList[index].status = row.status
-    }
-    ElMessage.success('状态更新成功')
-    loading.value = false
-  }, 500)
+// 加载场次列表
+function loadSessionList(activityId) {
+  if (!activityId) {
+    sessionList.value = []
+    return
+  }
+  
+  const params = {
+    conditions_: 'sort:sort:asc',
+    activityId: activityId,
+    size: 100,
+    current: 1
+  }
+  
+  request({
+    url: '/admin/seckillSession/crud/query',
+    method: 'get',
+    params
+  })
+    .then(response => {
+      const data = response.data
+      if (data.records) {
+        sessionList.value = data.records
+      }
+    })
+    .catch(error => {
+      ElMessage.error('获取场次列表失败: ' + (error.message || '未知错误'))
+      sessionList.value = []
+    })
 }
 
-// 查询
-function handleQuery() {
-  pagination.current = 1
-  getList()
+// 处理活动选择变化
+function handleActivityChange(activityId) {
+  // 清空场次选择
+  queryParams.sessionId = ''
+  // 加载对应的场次列表
+  loadSessionList(activityId)
+}
+
+// 加载商品列表
+const getProductList = () => {
+  loading.value = true
+  const params = {
+    conditions_: 'sort:createTime:desc',
+    size: queryParams.size,
+    current: queryParams.current
+  }
+  
+  // 添加查询参数
+  if (queryParams.activityId) {
+    params.activityId = queryParams.activityId
+  }
+  if (queryParams.sessionId) {
+    params.sessionId = queryParams.sessionId
+  }
+  if (queryParams.auditStatus) {
+    params.auditStatus = queryParams.auditStatus
+  }
+  if (queryParams.mchName) {
+    params.mchName = queryParams.mchName
+  }
+  if (queryParams.shopName) {
+    params.shopName = queryParams.shopName
+  }
+  if (queryParams.spuName) {
+    params.spuName = queryParams.spuName
+  }
+  
+  request({
+    url: '/admin/seckillSpu/query',
+    method: 'get',
+    params
+  })
+    .then(response => {
+      const data = response.data
+      if (data.records) {
+        productList.value = data.records
+        total.value = Number(data.total) || 0
+      }
+    })
+    .catch(error => {
+      ElMessage.error('获取商品列表失败: ' + (error.message || '未知错误'))
+      productList.value = []
+      total.value = 0
+    })
+    .finally(() => {
+      loading.value = false
+    })
+}
+
+// 搜索
+const handleQuery = () => {
+  queryParams.current = 1
+  getProductList()
 }
 
 // 重置
-function resetQuery() {
+const resetQuery = () => {
   Object.assign(queryParams, {
-    name: '',
-    status: '',
-    activityId: ''
+    activityId: '',
+    sessionId: '',
+    auditStatus: '',
+    mchName: '',
+    shopName: '',
+    spuName: ''
   })
+  // 清空场次列表
+  sessionList.value = []
   handleQuery()
 }
 
-// 分页大小变化
-function handleSizeChange(size) {
-  pagination.size = size
-  getList()
+// 分页
+const handleSizeChange = (size) => {
+  queryParams.size = size
+  getProductList()
 }
 
-// 当前页码变化
-function handleCurrentChange(current) {
-  pagination.current = current
-  getList()
+const handleCurrentChange = (current) => {
+  queryParams.current = current
+  getProductList()
+}
+
+// 查看详情
+const handleView = (row) => {
+  // 保存从列表中获取的字段（详情接口可能不返回这些字段）
+  const listFields = {
+    activityName: row.activityName, // 活动名称
+    sessionName: row.sessionName, // 场次名称
+    mchName: row.mchName, // 商家名称
+    shopName: row.shopName // 店铺名称
+  }
+  
+  loading.value = true
+  request({
+    url: '/admin/seckillSpu/detail',
+    method: 'get',
+    params: {
+      id: row.id
+    }
+  })
+  .then(response => {
+    const data = response.data
+    if (data) {
+      // 填充查看表单数据，优先使用列表中的字段
+      Object.assign(viewForm, {
+        ...data.spu,
+        ...listFields, // 从列表中获取的字段
+        images: data.images || [],
+        skuList: data.skuList || []
+      })
+      viewDialogVisible.value = true
+    }
+  })
+  .catch(error => {
+    ElMessage.error('获取商品详情失败: ' + (error.message || '未知错误'))
+  })
+  .finally(() => {
+    loading.value = false
+  })
+}
+
+// 获取图片预览URL
+function getImagePreviewUrl(fileKey) {
+  if (!fileKey) return ''
+  const env = import.meta.env.VITE_APP_ENV
+  if (env === 'development') {
+    const proxyTarget = import.meta.env.VITE_APP_DEV_BACKEND_URL || 'http://localhost:8080'
+    return `${proxyTarget}/public/storage/preview?fileKey=${fileKey}`
+  } else {
+    const baseApi = import.meta.env.VITE_APP_BASE_API || ''
+    return `${baseApi}/public/storage/preview?fileKey=${fileKey}`
+  }
+}
+
+// 获取状态文本
+function getStatusText(status) {
+  const statusMap = {
+    1: '待审核',
+    2: '审核通过',
+    3: '审核驳回'
+  }
+  return statusMap[status] || ''
+}
+
+// 获取状态标签类型
+function getStatusTagType(status) {
+  const typeMap = {
+    1: 'warning',
+    2: 'success',
+    3: 'danger'
+  }
+  return typeMap[status] || ''
 }
 </script>
 
-<style lang="scss" scoped>
-.seckill-manage {
-  padding: 20px;
+<style scoped>
+.app-container {
+  padding: 24px;
 }
 
 .mb8 {
   margin-bottom: 8px;
 }
 
-.pagination-container {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
-}
-
 .dialog-footer {
   text-align: right;
+}
+
+.carousel-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
 }
 </style>
