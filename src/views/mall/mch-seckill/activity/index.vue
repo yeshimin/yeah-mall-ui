@@ -1,13 +1,13 @@
 <template>
   <div class="app-container">
-    <!-- 搜索表单 -->
-    <el-form :inline="true" :model="queryParams" class="mb8">
+    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
       <el-form-item label="活动名称" prop="activityName">
         <el-input
           v-model="queryParams.activityName"
           placeholder="请输入活动名称"
           clearable
           style="width: 200px"
+          @keyup.enter="handleQuery"
         />
       </el-form-item>
       <el-form-item label="活动状态" prop="status">
@@ -23,14 +23,14 @@
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery">
-          搜索
-        </el-button>
-        <el-button icon="RefreshLeft" @click="resetQuery">
-          重置
-        </el-button>
+        <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
+        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
       </el-form-item>
     </el-form>
+
+    <el-row :gutter="10" class="mb8">
+      <right-toolbar v-model:showSearch="showSearch" @queryTable="getActivityList" />
+    </el-row>
 
     <!-- 活动列表 -->
     <el-table
@@ -71,7 +71,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="description" label="活动描述" min-width="200" />
-      <el-table-column label="操作" width="350" fixed="right">
+      <el-table-column label="操作" width="500" fixed="right">
         <template #default="scope">
           <el-button
             v-if="scope.row.applyStatus === 0"
@@ -111,6 +111,26 @@
           >
             <el-icon><Edit /></el-icon>
             申请参加
+          </el-button>
+          
+          <!-- 申请记录按钮 -->
+          <el-button
+            size="small"
+            type="info"
+            @click="goToApplyRecord(scope.row)"
+          >
+            <el-icon><Document /></el-icon>
+            申请记录
+          </el-button>
+          
+          <!-- 秒杀商品按钮 -->
+          <el-button
+            size="small"
+            type="success"
+            @click="goToSeckillProduct(scope.row)"
+          >
+            <el-icon><Goods /></el-icon>
+            秒杀商品
           </el-button>
 
         </template>
@@ -499,15 +519,21 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox, ElIcon } from 'element-plus'
-import { Timer, Edit, Plus, Check, Delete, Search } from '@element-plus/icons-vue'
+import { Timer, Edit, Plus, Check, Delete, Search, Document, Goods } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
+import RightToolbar from '@/components/RightToolbar/index.vue'
 import { queryMchSeckillActivityList, queryMchSeckillSessionList, submitSeckillApply, queryMchSpuList } from '@/api/mall/seckill'
+
+// 路由
+const router = useRouter()
 
 // 表格数据
 const loading = ref(false)
 const activityList = ref([])
 const total = ref(0)
+const showSearch = ref(true)
 
 // 查询参数
 const queryParams = reactive({
@@ -1118,6 +1144,28 @@ function getStatusTagType(status) {
     '6': 'default'
   }
   return typeMap[status] || 'info'
+}
+
+// 跳转到申请记录页面
+const goToApplyRecord = (activity) => {
+  router.push({
+    path: '/mall/mch-seckill/apply',
+    query: {
+      activityId: activity.id,
+      activityName: activity.name
+    }
+  })
+}
+
+// 跳转到秒杀商品页面
+const goToSeckillProduct = (activity) => {
+  router.push({
+    path: '/mall/mch-seckill/product',
+    query: {
+      activityId: activity.id,
+      activityName: activity.name
+    }
+  })
 }
 
 // 初始化

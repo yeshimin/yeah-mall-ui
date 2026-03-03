@@ -1,35 +1,38 @@
 <template>
-  <div class="seckill-manage">
-    <!-- 查询条件 -->
-    <el-form :inline="true" :model="queryParams" class="mb8">
-        <el-form-item label="审核状态" prop="status">
-          <el-select v-model="queryParams.status" placeholder="请选择审核状态" clearable style="width: 120px">
-            <el-option label="待审核" value="1" />
-            <el-option label="审核通过" value="2" />
-            <el-option label="审核驳回" value="3" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="活动名称" prop="activityId">
-          <el-select v-model="queryParams.activityId" placeholder="请选择活动" clearable style="width: 180px" @change="handleActivityChange">
-            <el-option v-for="activity in activityList" :key="activity.id" :label="activity.name" :value="activity.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="场次名称" prop="sessionId">
-          <el-select v-model="queryParams.sessionId" placeholder="请选择场次" clearable style="width: 180px">
-            <el-option v-for="session in sessionList" :key="session.id" :label="session.name" :value="session.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">
-            <el-icon><Search /></el-icon>
-            查询
-          </el-button>
-          <el-button @click="resetQuery">
-            <el-icon><Refresh /></el-icon>
-            重置
-          </el-button>
-        </el-form-item>
-      </el-form>
+  <div class="app-container">
+    <el-form :model="queryParams" ref="queryRef" :inline="true" v-show="showSearch">
+      <el-form-item label="审核状态" prop="status">
+        <el-select v-model="queryParams.status" placeholder="请选择审核状态" clearable style="width: 120px">
+          <el-option label="待审核" value="1" />
+          <el-option label="审核通过" value="2" />
+          <el-option label="审核驳回" value="3" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="活动名称" prop="activityId">
+        <el-select v-model="queryParams.activityId" placeholder="请选择活动" clearable style="width: 180px" @change="handleActivityChange">
+          <el-option v-for="activity in activityList" :key="activity.id" :label="activity.name" :value="activity.id" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="场次名称" prop="sessionId">
+        <el-select v-model="queryParams.sessionId" placeholder="请选择场次" clearable style="width: 180px">
+          <el-option v-for="session in sessionList" :key="session.id" :label="session.name" :value="session.id" />
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="handleQuery">
+          <el-icon><Search /></el-icon>
+          查询
+        </el-button>
+        <el-button @click="resetQuery">
+          <el-icon><Refresh /></el-icon>
+          重置
+        </el-button>
+      </el-form-item>
+    </el-form>
+
+    <el-row :gutter="10" class="mb8">
+      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" />
+    </el-row>
       
       <!-- 申请记录列表 -->
       <el-table v-loading="loading" :data="recordList" style="width: 100%">
@@ -134,12 +137,18 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Refresh, View } from '@element-plus/icons-vue'
+import { useRoute } from 'vue-router'
 import request from '@/utils/request'
+import RightToolbar from '@/components/RightToolbar/index.vue'
 import { querySeckillActivityList } from '@/api/mall/seckill'
+
+// 路由
+const route = useRoute()
 
 // 响应式数据
 const loading = ref(false)
 const viewDialogVisible = ref(false)
+const showSearch = ref(true)
 
 // 查询参数
 const queryParams = reactive({
@@ -169,27 +178,40 @@ const recordList = ref([])
 
 // 初始化
 onMounted(() => {
-  loadActivityList()
-  // 页面加载时自动获取一次申请记录
-  getList()
+  loadActivityList().then(() => {
+    // 检查URL中是否有活动ID参数
+    const activityId = route.query.activityId
+    if (activityId) {
+      // 设置活动ID到查询参数
+      queryParams.activityId = activityId
+      // 加载对应的场次列表
+      loadSessionList(activityId)
+    }
+    // 页面加载时自动获取一次申请记录
+    getList()
+  })
 })
 
 // 加载活动列表
 function loadActivityList() {
-  request({
-    url: '/mch/seckillActivity/queryApplyActivity',
-    method: 'get'
+  return new Promise((resolve, reject) => {
+    request({
+      url: '/mch/seckillActivity/queryApplyActivity',
+      method: 'get'
+    })
+      .then(response => {
+        const data = response.data
+        if (data) {
+          activityList.value = data
+        }
+        resolve()
+      })
+      .catch(error => {
+        ElMessage.error('获取活动列表失败: ' + (error.message || '未知错误'))
+        activityList.value = []
+        resolve() // 即使失败也 resolve，确保初始化流程继续
+      })
   })
-    .then(response => {
-      const data = response.data
-      if (data) {
-        activityList.value = data
-      }
-    })
-    .catch(error => {
-      ElMessage.error('获取活动列表失败: ' + (error.message || '未知错误'))
-      activityList.value = []
-    })
 }
 
 // 加载场次列表
@@ -376,9 +398,9 @@ function handleCurrentChange(current) {
 }
 </script>
 
-<style lang="scss" scoped>
-.seckill-manage {
-  padding: 20px;
+<style scoped>
+.app-container {
+  padding: 24px;
 }
 
 .mb8 {

@@ -1,12 +1,13 @@
 <template>
-  <div class="seckill-manage">
-    <el-form ref="searchFormRef" :model="queryParams" label-position="left" label-width="80px" inline class="mb8">
+  <div class="app-container">
+    <el-form :model="queryParams" ref="searchFormRef" :inline="true" v-show="showSearch">
       <el-form-item label="活动名称">
         <el-input 
           v-model="queryParams.name" 
           placeholder="请输入活动名称" 
           clearable 
           style="width: 200px"
+          @keyup.enter="handleQuery"
         />
       </el-form-item>
       <el-form-item label="活动状态">
@@ -29,12 +30,15 @@
           <el-icon><Refresh /></el-icon>
           重置
         </el-button>
-        <el-button type="primary" @click="handleAdd">
-          <el-icon><Plus /></el-icon>
-          新增活动
-        </el-button>
       </el-form-item>
     </el-form>
+
+    <el-row :gutter="10" class="mb8">
+      <el-col :span="1.5">
+        <el-button type="primary" plain icon="Plus" @click="handleAdd">新增活动</el-button>
+      </el-col>
+      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" />
+    </el-row>
 
     <el-table v-loading="loading" :data="activityList" style="width: 100%">
       <el-table-column label="序号" type="index" width="80" />
@@ -251,6 +255,7 @@ import { Plus, Search, Refresh, Edit, Delete, Timer, Upload, Picture, Check } fr
 import { querySeckillActivityList, createSeckillActivity, updateSeckillActivity, deleteSeckillActivity, updateSeckillActivityStatus, updateSeckillActivityEnabled } from '@/api/mall/seckill'
 import { useRouter } from 'vue-router'
 import { getToken } from '@/utils/auth'
+import RightToolbar from '@/components/RightToolbar/index.vue'
 
 // 响应式数据
 const loading = ref(false)
@@ -258,6 +263,7 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('新增活动')
 const formRef = ref(null)
 const router = useRouter()
+const showSearch = ref(true)
 
 // 上传成功处理
 function handleUploadSuccess(response) {
@@ -669,9 +675,9 @@ function handleAudit(row) {
 }
 </script>
 
-<style lang="scss" scoped>
-.seckill-manage {
-  padding: 20px;
+<style scoped>
+.app-container {
+  padding: 24px;
 }
 
 .mb8 {
