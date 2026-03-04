@@ -1128,7 +1128,8 @@ function getStatusText(status) {
     '3': '开始报名',
     '4': '结束报名',
     '5': '开始活动',
-    '6': '结束活动'
+    '6': '结束活动',
+    '7': '活动下架'
   }
   return statusMap[status] || '未知'
 }
@@ -1141,7 +1142,8 @@ function getStatusTagType(status) {
     '3': 'success',
     '4': 'warning',
     '5': 'danger',
-    '6': 'default'
+    '6': 'default',
+    '7': 'danger'
   }
   return typeMap[status] || 'info'
 }
