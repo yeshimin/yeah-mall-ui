@@ -134,6 +134,44 @@ export const dynamicRoutes = [
           }
         ]
       },
+      // 商家拼团管理
+      {
+        path: 'mch-group-buy',
+        component: () => import('@/components/ParentView'),
+        name: 'MchGroupBuy',
+        meta: { title: '商家拼团管理', icon: 'group', noCache: true },
+        children: [
+          // 拼团活动管理
+          {
+            path: 'activity',
+            component: () => import('@/views/mall/mch-group-buy/activity/index.vue'),
+            name: 'MchGroupBuyList',
+            meta: { title: '活动管理', icon: 'group', noCache: true }
+          },
+          // 拼团商品管理
+          {
+            path: 'product',
+            component: () => import('@/views/mall/mch-group-buy/product/index.vue'),
+            name: 'MchGroupBuyProduct',
+            meta: { title: '商品管理', icon: 'goods', noCache: true }
+          },
+          // 拼团申请记录
+          {
+            path: 'apply',
+            component: () => import('@/views/mall/mch-group-buy/apply/index.vue'),
+            name: 'MchGroupBuyApply',
+            meta: { title: '申请记录', icon: 'document', noCache: true }
+          },
+          // 拼团订单管理
+          {
+            path: 'order',
+            component: () => import('@/views/mall/mch-group-buy/order/index.vue'),
+            name: 'MchGroupBuyOrder',
+            meta: { title: '订单管理', icon: 'order', noCache: true }
+          }
+        ]
+      },
+
       // 管理端秒杀管理
       {
         path: 'seckill',
@@ -168,9 +206,61 @@ export const dynamicRoutes = [
             component: () => import('@/views/mall/seckill/audit/index.vue'),
             name: 'SeckillAudit',
             meta: { title: '审核管理', icon: 'check', noCache: true }
+          },
+          // 监控中心
+          {
+            path: 'monitor',
+            component: () => import('@/views/mall/seckill/monitor/index.vue'),
+            name: 'SeckillMonitor',
+            meta: { title: '监控中心', icon: 'check', noCache: true }
+          },
+          // 数据分析
+          {
+            path: 'analysis',
+            component: () => import('@/views/mall/seckill/analysis/index.vue'),
+            name: 'SeckillAnalysis',
+            meta: { title: '数据分析', icon: 'check', noCache: true }
+          }
+        ]
+      },
+      // 管理端拼团管理
+      {
+        path: 'group-buy',
+        component: () => import('@/components/ParentView'),
+        name: 'GroupBuy',
+        meta: { title: '拼团管理', icon: 'group', noCache: true },
+        children: [
+          // 拼团活动列表
+          {
+            path: 'list',
+            component: () => import('@/views/mall/group-buy/list/index.vue'),
+            name: 'GroupBuyList',
+            meta: { title: '活动列表', icon: 'group', noCache: true }
+          },
+          // 拼团商品管理
+          {
+            path: 'product',
+            component: () => import('@/views/mall/group-buy/product/index.vue'),
+            name: 'GroupBuyProduct',
+            meta: { title: '商品管理', icon: 'goods', noCache: true }
+          },
+          // 拼团订单管理
+          {
+            path: 'order',
+            component: () => import('@/views/mall/group-buy/order/index.vue'),
+            name: 'GroupBuyOrder',
+            meta: { title: '订单管理', icon: 'order', noCache: true }
+          },
+          // 拼团审核管理
+          {
+            path: 'audit',
+            component: () => import('@/views/mall/group-buy/audit/index.vue'),
+            name: 'GroupBuyAudit',
+            meta: { title: '审核管理', icon: 'check', noCache: true }
           }
         ]
       }
+
     ]
   },
   {
