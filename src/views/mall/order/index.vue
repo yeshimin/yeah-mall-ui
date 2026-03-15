@@ -38,6 +38,12 @@
             <el-option label="已驳回" value="4"></el-option>
           </el-select>
         </el-form-item>
+        <el-form-item label="订单类型">
+          <el-select v-model="searchForm.orderType" placeholder="请选择订单类型" clearable style="width: 200px;">
+            <el-option label="普通订单" value="1"></el-option>
+            <el-option label="秒杀订单" value="2"></el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item label="下单时间">
           <el-date-picker
             v-model="dateRange"
@@ -68,6 +74,11 @@
         <el-table-column prop="totalAmount" label="订单金额" min-width="120" align="right">
           <template #default="scope">
             <span>¥{{ scope.row.totalAmount.toFixed(2) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="orderType" label="订单类型" min-width="120">
+          <template #default="scope">
+            <el-tag :type="getOrderTypeTagType(scope.row.orderType)">{{ getOrderTypeText(scope.row.orderType) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="订单状态" min-width="150">
@@ -639,6 +650,7 @@ const searchForm = reactive({
   status: '',
   refundStatus: '',
   afterSaleStatus: '',
+  orderType: '',
   startDate: '',
   endDate: ''
 });
@@ -803,6 +815,7 @@ const resetForm = () => {
     status: '',
     refundStatus: '',
     afterSaleStatus: '',
+    orderType: '',
     startDate: '',
     endDate: ''
   });
@@ -984,6 +997,22 @@ const getStatusType = (status) => {
     '7': 'warning'
   };
   return typeMap[status] || 'info';
+};
+
+const getOrderTypeText = (orderType) => {
+  const typeMap = {
+    '1': '普通订单',
+    '2': '秒杀订单'
+  };
+  return typeMap[orderType] || '-';
+};
+
+const getOrderTypeTagType = (orderType) => {
+  const typeMap = {
+    '1': 'info',
+    '2': 'danger'
+  };
+  return typeMap[orderType] || 'info';
 };
 
 const getRefundStatusText = (status) => {
