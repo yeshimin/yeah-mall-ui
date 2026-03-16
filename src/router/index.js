@@ -171,6 +171,29 @@ export const dynamicRoutes = [
           }
         ]
       },
+      // 商家优惠券管理
+      {
+        path: 'mch-coupon',
+        component: () => import('@/components/ParentView'),
+        name: 'MchCoupon',
+        meta: { title: '优惠券管理', icon: 'coupon', noCache: true },
+        children: [
+          // 优惠券列表
+          {
+            path: 'list',
+            component: () => import('@/views/mall/mch-coupon/list/index.vue'),
+            name: 'MchCouponList',
+            meta: { title: '优惠券列表', icon: 'coupon', noCache: true }
+          },
+          // 优惠券使用记录
+          {
+            path: 'record',
+            component: () => import('@/views/mall/mch-coupon/record/index.vue'),
+            name: 'MchCouponRecord',
+            meta: { title: '使用记录', icon: 'document', noCache: true }
+          }
+        ]
+      },
 
       // 管理端秒杀管理
       {
