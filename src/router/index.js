@@ -191,6 +191,13 @@ export const dynamicRoutes = [
             component: () => import('@/views/mall/mch-coupon/record/index.vue'),
             name: 'MchCouponRecord',
             meta: { title: '使用记录', icon: 'document', noCache: true }
+          },
+          // 优惠券领取记录
+          {
+            path: 'receive',
+            component: () => import('@/views/mall/mch-coupon/receive/index.vue'),
+            name: 'MchCouponReceive',
+            meta: { title: '领取记录', icon: 'document', noCache: true }
           }
         ]
       },

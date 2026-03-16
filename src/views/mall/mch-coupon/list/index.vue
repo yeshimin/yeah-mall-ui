@@ -73,6 +73,7 @@
       <el-table-column prop="startTime" label="开始时间" width="180" />
       <el-table-column prop="endTime" label="结束时间" width="180" />
       <el-table-column prop="totalCount" label="总数量" width="100" />
+      <el-table-column prop="receivedCount" label="已领取" width="100" />
       <el-table-column prop="usedCount" label="已使用" width="100" />
       <el-table-column prop="status" label="状态" width="100">
         <template #default="scope">
@@ -81,7 +82,7 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="250" fixed="right">
+      <el-table-column label="操作" width="350" fixed="right">
         <template #default="scope">
           <el-button type="primary" size="small" @click="handleEdit(scope.row)" plain>
             <el-icon><Edit /></el-icon>
@@ -90,6 +91,14 @@
           <el-button type="success" size="small" @click="handleStatusChange(scope.row)" plain>
             <el-icon><Check /></el-icon>
             {{ scope.row.status === '1' ? '禁用' : '启用' }}
+          </el-button>
+          <el-button type="info" size="small" @click="navigateToReceive(scope.row.id)" plain>
+            <el-icon><View /></el-icon>
+            领取记录
+          </el-button>
+          <el-button type="warning" size="small" @click="navigateToRecord(scope.row.id)" plain>
+            <el-icon><View /></el-icon>
+            使用记录
           </el-button>
           <el-button type="danger" size="small" @click="handleDelete(scope.row.id)" plain>
             <el-icon><Delete /></el-icon>
@@ -141,10 +150,10 @@
           <el-input-number v-model="form.perLimit" :min="1" style="width: 100%" placeholder="请输入每人限领数量" />
         </el-form-item>
         <el-form-item label="开始时间" prop="startTime">
-          <el-date-picker v-model="form.startTime" type="datetime" placeholder="选择开始时间" style="width: 100%" />
+          <el-date-picker v-model="form.startTime" type="datetime" placeholder="选择开始时间" style="width: 100%" value-format="YYYY-MM-DD HH:mm:ss" />
         </el-form-item>
         <el-form-item label="结束时间" prop="endTime">
-          <el-date-picker v-model="form.endTime" type="datetime" placeholder="选择结束时间" style="width: 100%" />
+          <el-date-picker v-model="form.endTime" type="datetime" placeholder="选择结束时间" style="width: 100%" value-format="YYYY-MM-DD HH:mm:ss" />
         </el-form-item>
         <el-form-item label="使用范围" prop="useScope">
           <el-radio-group v-model="form.useScope">
@@ -172,10 +181,14 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Edit, Delete, Check } from '@element-plus/icons-vue'
-import { getCouponList, createCoupon, updateCoupon, deleteCoupon, updateCouponStatus } from '@/api/mall/coupon'
+import { Plus, Search, Refresh, Edit, Delete, Check, View } from '@element-plus/icons-vue'
+import { getMchCouponList, createMchCoupon, updateMchCoupon, deleteMchCoupon } from '@/api/mall/mchCoupon'
 import RightToolbar from '@/components/RightToolbar/index.vue'
+
+// 路由
+const router = useRouter()
 
 // 响应式数据
 const loading = ref(false)
@@ -228,46 +241,6 @@ const rules = reactive({
 // 优惠券列表
 const couponList = ref([])
 
-// 模拟数据
-const mockCouponList = [
-  {
-    id: 1,
-    name: '满100减20优惠券',
-    type: '1',
-    value: 20,
-    minAmount: 100,
-    startTime: '2026-03-01 00:00:00',
-    endTime: '2026-03-31 23:59:59',
-    totalCount: 100,
-    usedCount: 30,
-    status: '1'
-  },
-  {
-    id: 2,
-    name: '全场8折优惠券',
-    type: '2',
-    value: 8,
-    minAmount: 0,
-    startTime: '2026-03-01 00:00:00',
-    endTime: '2026-03-31 23:59:59',
-    totalCount: 50,
-    usedCount: 15,
-    status: '1'
-  },
-  {
-    id: 3,
-    name: '无门槛10元优惠券',
-    type: '3',
-    value: 10,
-    minAmount: 0,
-    startTime: '2026-03-01 00:00:00',
-    endTime: '2026-03-31 23:59:59',
-    totalCount: 200,
-    usedCount: 80,
-    status: '0'
-  }
-]
-
 // 初始化
 onMounted(() => {
   getList()
@@ -277,28 +250,54 @@ onMounted(() => {
 function getList() {
   loading.value = true
   const params = {
-    conditions_: `sort:createTime:desc`,
+    conditions_: `sort:sort:asc;createTime:sort:desc`,
     size: pagination.size,
-    current: pagination.current
+    current: pagination.current,
+    shopId: getShopId()
   }
   
   // 合并查询参数
   if (queryParams.name) {
-    params.conditions_ += `,name:${queryParams.name}:like`
+    params.conditions_ += `;name:like:${queryParams.name}`
   }
   if (queryParams.type) {
-    params.conditions_ += `,type:${queryParams.type}:eq`
+    params.conditions_ += `;type:eq:${queryParams.type}`
   }
   if (queryParams.status) {
-    params.conditions_ += `,status:${queryParams.status}:eq`
+    params.conditions_ += `;isEnabled:eq:${queryParams.status === '1' ? 1 : 0}`
   }
   
-  // 模拟API调用
-  setTimeout(() => {
-    couponList.value = mockCouponList
-    pagination.total = mockCouponList.length
+  // 调用真实API
+  getMchCouponList(params).then(res => {
+    if (res.code === 0) {
+      // 转换数据格式以匹配前端期望
+      couponList.value = res.data.records.map(item => ({
+        id: item.id,
+        name: item.name,
+        type: item.type.toString(),
+        value: item.type === 2 ? item.discount : item.amount,
+        minAmount: item.minAmount,
+        startTime: item.beginTime,
+        endTime: item.endTime,
+        totalCount: item.quantity,
+        receivedCount: item.received,
+        usedCount: item.used,
+        status: item.isEnabled ? '1' : '0'
+      }))
+      pagination.total = res.data.total
+    } else {
+      ElMessage.error(res.message || '获取优惠券列表失败')
+    }
     loading.value = false
-  }, 500)
+  }).catch(() => {
+    ElMessage.error('获取优惠券列表失败')
+    loading.value = false
+  })
+}
+
+// 获取店铺ID
+function getShopId() {
+  return localStorage.getItem('shopId') || ''
 }
 
 // 新增优惠券
@@ -314,7 +313,7 @@ function handleAdd() {
   form.startTime = ''
   form.endTime = ''
   form.useScope = '1'
-  form.status = '1'
+  form.status = '0' // 默认禁用状态
   dialogVisible.value = true
 }
 
@@ -342,35 +341,57 @@ function handleSubmit() {
     if (valid) {
       loading.value = true
       const submitData = {
+        shopId: getShopId(),
         name: form.name,
-        type: form.type,
-        value: form.value,
+        description: form.name,
+        type: parseInt(form.type),
+        amount: form.type === '2' ? 0 : form.value,
+        discount: form.type === '2' ? form.value : 1,
         minAmount: form.minAmount,
-        totalCount: form.totalCount,
+        quantity: form.totalCount,
+        received: 0,
+        used: 0,
         perLimit: form.perLimit,
-        startTime: form.startTime,
+        useRange: parseInt(form.useScope),
+        targetId: '0',
+        beginTime: form.startTime,
         endTime: form.endTime,
-        useScope: form.useScope,
-        status: form.status
+        sort: 0,
+        isEnabled: form.status === '1' ? 1 : 0,
+        remark: ''
       }
       
       if (form.id) {
         // 编辑
         submitData.id = form.id
-        setTimeout(() => {
-          ElMessage.success('编辑成功')
-          dialogVisible.value = false
-          getList()
+        updateMchCoupon(submitData).then(res => {
+          if (res.code === 0) {
+            ElMessage.success('编辑成功')
+            dialogVisible.value = false
+            getList()
+          } else {
+            ElMessage.error(res.message || '编辑失败')
+          }
           loading.value = false
-        }, 500)
+        }).catch(() => {
+          ElMessage.error('编辑失败')
+          loading.value = false
+        })
       } else {
         // 新增
-        setTimeout(() => {
-          ElMessage.success('新增成功')
-          dialogVisible.value = false
-          getList()
+        createMchCoupon(submitData).then(res => {
+          if (res.code === 0) {
+            ElMessage.success('新增成功')
+            dialogVisible.value = false
+            getList()
+          } else {
+            ElMessage.error(res.message || '新增失败')
+          }
           loading.value = false
-        }, 500)
+        }).catch(() => {
+          ElMessage.error('新增失败')
+          loading.value = false
+        })
       }
     }
   })
@@ -384,12 +405,18 @@ function handleDelete(id) {
     type: 'warning'
   }).then(() => {
     loading.value = true
-    // 模拟删除
-    setTimeout(() => {
-      ElMessage.success('删除成功')
-      getList()
+    deleteMchCoupon([id]).then(res => {
+      if (res.code === 0) {
+        ElMessage.success('删除成功')
+        getList()
+      } else {
+        ElMessage.error(res.message || '删除失败')
+      }
       loading.value = false
-    }, 500)
+    }).catch(() => {
+      ElMessage.error('删除失败')
+      loading.value = false
+    })
   })
 }
 
@@ -402,12 +429,37 @@ function handleStatusChange(row) {
     type: 'warning'
   }).then(() => {
     loading.value = true
-    // 模拟状态更新
-    setTimeout(() => {
-      ElMessage.success('状态更新成功')
-      getList()
+    updateMchCoupon({
+      id: row.id,
+      isEnabled: newStatus === '1' ? true : false
+    }).then(res => {
+      if (res.code === 0) {
+        ElMessage.success('状态更新成功')
+        getList()
+      } else {
+        ElMessage.error(res.message || '状态更新失败')
+      }
       loading.value = false
-    }, 500)
+    }).catch(() => {
+      ElMessage.error('状态更新失败')
+      loading.value = false
+    })
+  })
+}
+
+// 跳转到领取记录
+function navigateToReceive(couponId) {
+  router.push({
+    path: '/mall/mch-coupon/receive',
+    query: { couponId }
+  })
+}
+
+// 跳转到使用记录
+function navigateToRecord(couponId) {
+  router.push({
+    path: '/mall/mch-coupon/record',
+    query: { couponId }
   })
 }
 

@@ -25,18 +25,6 @@
           @keyup.enter="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="使用状态">
-        <el-select 
-          v-model="queryParams.status" 
-          placeholder="请选择使用状态" 
-          clearable 
-          style="width: 120px"
-        >
-          <el-option label="已使用" value="1" />
-          <el-option label="已过期" value="2" />
-          <el-option label="已作废" value="3" />
-        </el-select>
-      </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="handleQuery">
           <el-icon><Search /></el-icon>
@@ -53,7 +41,7 @@
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList" />
     </el-row>
 
-    <el-table v-loading="loading" :data="recordList" style="width: 100%">
+    <el-table v-loading="loading" :data="receiveList" style="width: 100%">
       <el-table-column label="序号" type="index" width="80" />
       <el-table-column prop="couponName" label="优惠券名称" min-width="150" />
       <el-table-column prop="couponType" label="优惠券类型" width="100">
@@ -71,19 +59,9 @@
           {{ scope.row.minAmount > 0 ? '满¥' + scope.row.minAmount : '无门槛' }}
         </template>
       </el-table-column>
-      <el-table-column prop="userName" label="使用用户" width="120" />
-      <el-table-column prop="orderNo" label="订单号" min-width="180" />
-      <el-table-column prop="orderAmount" label="订单金额" width="120">
-        <template #default="scope">
-          ¥{{ scope.row.orderAmount }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="discountAmount" label="优惠金额" width="120">
-        <template #default="scope">
-          ¥{{ scope.row.discountAmount }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="useTime" label="使用时间" width="180" />
+      <el-table-column prop="userName" label="领取用户" width="120" />
+      <el-table-column prop="userPhone" label="用户手机号" width="150" />
+      <el-table-column prop="receiveTime" label="领取时间" width="180" />
       <el-table-column prop="status" label="状态" width="100">
         <template #default="scope">
           <el-tag :type="getStatusTagType(scope.row.status)">
@@ -124,8 +102,7 @@ const showSearch = ref(true)
 // 查询参数
 const queryParams = reactive({
   couponId: '',
-  userInfo: '',
-  status: ''
+  userInfo: ''
 })
 
 // 分页参数
@@ -135,8 +112,8 @@ const pagination = reactive({
   total: 0
 })
 
-// 记录列表
-const recordList = ref([])
+// 领取记录列表
+const receiveList = ref([])
 
 // 优惠券列表
 const couponList = ref([])
@@ -149,7 +126,7 @@ const mockCouponList = [
 ]
 
 // 模拟数据
-const mockRecordList = [
+const mockReceiveList = [
   {
     id: 1,
     couponName: '满100减20优惠券',
@@ -157,49 +134,52 @@ const mockRecordList = [
     couponValue: 20,
     minAmount: 100,
     userName: '张三',
-    orderNo: '2026031612345678',
-    orderAmount: 150,
-    discountAmount: 20,
-    useTime: '2026-03-16 10:30:00',
+    userPhone: '13800138001',
+    receiveTime: '2026-03-16 09:00:00',
     status: '1'
   },
   {
     id: 2,
-    couponName: '全场8折优惠券',
-    couponType: '2',
-    couponValue: 8,
-    minAmount: 0,
-    userName: '李四',
-    orderNo: '2026031687654321',
-    orderAmount: 200,
-    discountAmount: 40,
-    useTime: '2026-03-16 11:15:00',
-    status: '1'
-  },
-  {
-    id: 3,
-    couponName: '无门槛10元优惠券',
-    couponType: '3',
-    couponValue: 10,
-    minAmount: 0,
-    userName: '王五',
-    orderNo: '2026031613579246',
-    orderAmount: 50,
-    discountAmount: 10,
-    useTime: '2026-03-16 12:45:00',
-    status: '1'
-  },
-  {
-    id: 4,
     couponName: '满100减20优惠券',
     couponType: '1',
     couponValue: 20,
     minAmount: 100,
+    userName: '李四',
+    userPhone: '13800138002',
+    receiveTime: '2026-03-16 09:30:00',
+    status: '1'
+  },
+  {
+    id: 3,
+    couponName: '全场8折优惠券',
+    couponType: '2',
+    couponValue: 8,
+    minAmount: 0,
+    userName: '王五',
+    userPhone: '13800138003',
+    receiveTime: '2026-03-16 10:00:00',
+    status: '1'
+  },
+  {
+    id: 4,
+    couponName: '无门槛10元优惠券',
+    couponType: '3',
+    couponValue: 10,
+    minAmount: 0,
     userName: '赵六',
-    orderNo: '',
-    orderAmount: 0,
-    discountAmount: 0,
-    useTime: '',
+    userPhone: '13800138004',
+    receiveTime: '2026-03-16 10:30:00',
+    status: '1'
+  },
+  {
+    id: 5,
+    couponName: '无门槛10元优惠券',
+    couponType: '3',
+    couponValue: 10,
+    minAmount: 0,
+    userName: '孙七',
+    userPhone: '13800138005',
+    receiveTime: '2026-03-16 11:00:00',
     status: '2'
   }
 ]
@@ -226,11 +206,11 @@ function getCouponListData() {
   }, 300)
 }
 
-// 获取使用记录
+// 获取领取记录
 function getList() {
   loading.value = true
   const params = {
-    conditions_: `sort:useTime:desc`,
+    conditions_: `sort:receiveTime:desc`,
     size: pagination.size,
     current: pagination.current
   }
@@ -242,21 +222,18 @@ function getList() {
   if (queryParams.userInfo) {
     params.conditions_ += `,userInfo:${queryParams.userInfo}:like`
   }
-  if (queryParams.status) {
-    params.conditions_ += `,status:${queryParams.status}:eq`
-  }
   
   // 模拟API调用
   setTimeout(() => {
-    let filteredList = mockRecordList
+    let filteredList = mockReceiveList
     if (queryParams.couponId) {
       // 根据优惠券ID过滤
       const coupon = couponList.value.find(c => c.id == queryParams.couponId)
       if (coupon) {
-        filteredList = mockRecordList.filter(item => item.couponName === coupon.name)
+        filteredList = mockReceiveList.filter(item => item.couponName === coupon.name)
       }
     }
-    recordList.value = filteredList
+    receiveList.value = filteredList
     pagination.total = filteredList.length
     loading.value = false
   }, 500)
@@ -272,8 +249,7 @@ function handleQuery() {
 function resetQuery() {
   Object.assign(queryParams, {
     couponId: '',
-    userInfo: '',
-    status: ''
+    userInfo: ''
   })
   handleQuery()
 }
@@ -303,9 +279,9 @@ function getTypeText(type) {
 // 获取状态文本
 function getStatusText(status) {
   const statusMap = {
-    '1': '已使用',
+    '1': '已领取',
     '2': '已过期',
-    '3': '已作废'
+    '3': '已使用'
   }
   return statusMap[status] || '未知'
 }
@@ -313,9 +289,9 @@ function getStatusText(status) {
 // 获取状态标签类型
 function getStatusTagType(status) {
   const typeMap = {
-    '1': 'success',
+    '1': 'info',
     '2': 'warning',
-    '3': 'danger'
+    '3': 'success'
   }
   return typeMap[status] || 'info'
 }
