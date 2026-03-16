@@ -127,7 +127,7 @@
           <el-input v-model="form.name" placeholder="请输入优惠券名称" />
         </el-form-item>
         <el-form-item label="优惠券类型" prop="type">
-          <el-radio-group v-model="form.type">
+          <el-radio-group v-model="form.type" @change="handleTypeChange">
             <el-radio label="1">满减券</el-radio>
             <el-radio label="2">折扣券</el-radio>
             <el-radio label="3">无门槛券</el-radio>
@@ -137,11 +137,13 @@
           <el-input-number v-model="form.value" :min="0.01" :step="0.01" style="width: 100%" placeholder="请输入优惠金额" />
         </el-form-item>
         <el-form-item label="折扣比例" prop="value" v-if="form.type === '2'">
-          <el-input-number v-model="form.value" :min="0.1" :max="9.9" :step="0.1" style="width: 100%" placeholder="请输入折扣比例" />
-          <div class="text-xs text-gray-400 mt-1">例如：8.5表示8.5折</div>
+          <div style="display: flex; align-items: center; width: 100%">
+            <el-input-number v-model="form.value" :min="0.1" :max="0.99" :step="0.01" style="flex: 1" placeholder="请输入折扣比例" />
+            <span style="margin-left: 24px; font-size: 12px; color: #909399;">例如：0.85表示85折</span>
+          </div>
         </el-form-item>
-        <el-form-item label="使用条件" prop="minAmount">
-          <el-input-number v-model="form.minAmount" :min="0" style="width: 100%" placeholder="请输入最低消费金额，0表示无门槛" />
+        <el-form-item label="使用门槛金额" prop="minAmount">
+          <el-input-number v-model="form.minAmount" :min="0" style="width: 100%" placeholder="请输入最低消费金额，0表示无门槛" :disabled="form.type === '3'" />
         </el-form-item>
         <el-form-item label="总数量" prop="totalCount">
           <el-input-number v-model="form.totalCount" :min="1" style="width: 100%" placeholder="请输入优惠券总数量" />
@@ -333,6 +335,13 @@ function handleEdit(row) {
   form.useScope = row.useScope || '1'
   form.status = row.status
   dialogVisible.value = true
+}
+
+// 处理优惠券类型变更
+function handleTypeChange() {
+  if (form.type === '3') {
+    form.minAmount = 0
+  }
 }
 
 // 提交表单
