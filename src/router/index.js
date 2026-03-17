@@ -96,6 +96,14 @@ export const dynamicRoutes = [
     meta: { title: '商城管理', icon: 'shopping-mall' },
     alwaysShow: true,
     children: [
+      // 商品管理-spu
+      {
+        path: 'spu',
+        component: () => import('@/views/mall/spu/index.vue'),
+        hidden: true,
+        name: 'MallSpuManage',
+        meta: { title: '商品SPU管理', icon: 'price-tag', noCache: true }
+      },
       // 商品管理-sku
       {
         path: 'sku',
