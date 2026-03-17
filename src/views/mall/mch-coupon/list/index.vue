@@ -159,7 +159,7 @@
         </el-form-item>
         <el-form-item label="使用范围" prop="useScope">
           <el-radio-group v-model="form.useScope" @change="handleUseScopeChange">
-            <el-radio label="1">全场通用</el-radio>
+            <el-radio label="1">店铺通用</el-radio>
             <el-radio label="2">指定商品</el-radio>
             <el-radio label="3">指定分类</el-radio>
           </el-radio-group>
