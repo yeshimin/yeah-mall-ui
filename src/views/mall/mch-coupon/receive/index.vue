@@ -16,14 +16,38 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="用户信息">
+      <el-form-item label="优惠券类型">
+        <el-select 
+          v-model="queryParams.type" 
+          placeholder="请选择类型" 
+          clearable 
+          style="width: 150px"
+        >
+          <el-option label="满减券" value="1" />
+          <el-option label="折扣券" value="2" />
+          <el-option label="无门槛券" value="3" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="优惠券名称">
         <el-input 
-          v-model="queryParams.userInfo" 
-          placeholder="请输入用户名/手机号" 
+          v-model="queryParams.name" 
+          placeholder="请输入优惠券名称" 
           clearable 
           style="width: 200px"
           @keyup.enter="handleQuery"
         />
+      </el-form-item>
+      <el-form-item label="使用范围">
+        <el-select 
+          v-model="queryParams.useRange" 
+          placeholder="请选择使用范围" 
+          clearable 
+          style="width: 150px"
+        >
+          <el-option label="店铺通用" value="1" />
+          <el-option label="指定商品" value="2" />
+          <el-option label="指定分类" value="3" />
+        </el-select>
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="handleQuery">
@@ -51,7 +75,7 @@
       </el-table-column>
       <el-table-column prop="couponValue" label="优惠金额/折扣" width="120">
         <template #default="scope">
-          {{ scope.row.couponType === '2' ? scope.row.couponValue + '折' : '¥' + scope.row.couponValue }}
+          {{ scope.row.couponType === '2' ? scope.row.couponValue + '%' : '¥' + scope.row.couponValue }}
         </template>
       </el-table-column>
       <el-table-column prop="minAmount" label="使用条件" width="120">
@@ -59,16 +83,14 @@
           {{ scope.row.minAmount > 0 ? '满¥' + scope.row.minAmount : '无门槛' }}
         </template>
       </el-table-column>
-      <el-table-column prop="userName" label="领取用户" width="120" />
-      <el-table-column prop="userPhone" label="用户手机号" width="150" />
       <el-table-column prop="receiveTime" label="领取时间" width="180" />
-      <el-table-column prop="status" label="状态" width="100">
+      <el-table-column prop="useRange" label="使用范围" width="120">
         <template #default="scope">
-          <el-tag :type="getStatusTagType(scope.row.status)">
-            {{ getStatusText(scope.row.status) }}
-          </el-tag>
+          {{ getUseRangeText(scope.row.useRange) }}
         </template>
       </el-table-column>
+      <el-table-column prop="beginTime" label="有效期开始" width="180" />
+      <el-table-column prop="endTime" label="有效期结束" width="180" />
     </el-table>
 
     <div class="pagination-container" style="margin-top: 20px; text-align: right;">
@@ -91,6 +113,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import RightToolbar from '@/components/RightToolbar/index.vue'
+import { getMemberCouponList, getCouponList } from '@/api/mall/memberCoupon'
 
 // 路由
 const route = useRoute()
@@ -102,7 +125,9 @@ const showSearch = ref(true)
 // 查询参数
 const queryParams = reactive({
   couponId: '',
-  userInfo: ''
+  type: '',
+  name: '',
+  useRange: ''
 })
 
 // 分页参数
@@ -118,71 +143,7 @@ const receiveList = ref([])
 // 优惠券列表
 const couponList = ref([])
 
-// 模拟优惠券列表数据
-const mockCouponList = [
-  { id: 1, name: '满100减20优惠券' },
-  { id: 2, name: '全场8折优惠券' },
-  { id: 3, name: '无门槛10元优惠券' }
-]
 
-// 模拟数据
-const mockReceiveList = [
-  {
-    id: 1,
-    couponName: '满100减20优惠券',
-    couponType: '1',
-    couponValue: 20,
-    minAmount: 100,
-    userName: '张三',
-    userPhone: '13800138001',
-    receiveTime: '2026-03-16 09:00:00',
-    status: '1'
-  },
-  {
-    id: 2,
-    couponName: '满100减20优惠券',
-    couponType: '1',
-    couponValue: 20,
-    minAmount: 100,
-    userName: '李四',
-    userPhone: '13800138002',
-    receiveTime: '2026-03-16 09:30:00',
-    status: '1'
-  },
-  {
-    id: 3,
-    couponName: '全场8折优惠券',
-    couponType: '2',
-    couponValue: 8,
-    minAmount: 0,
-    userName: '王五',
-    userPhone: '13800138003',
-    receiveTime: '2026-03-16 10:00:00',
-    status: '1'
-  },
-  {
-    id: 4,
-    couponName: '无门槛10元优惠券',
-    couponType: '3',
-    couponValue: 10,
-    minAmount: 0,
-    userName: '赵六',
-    userPhone: '13800138004',
-    receiveTime: '2026-03-16 10:30:00',
-    status: '1'
-  },
-  {
-    id: 5,
-    couponName: '无门槛10元优惠券',
-    couponType: '3',
-    couponValue: 10,
-    minAmount: 0,
-    userName: '孙七',
-    userPhone: '13800138005',
-    receiveTime: '2026-03-16 11:00:00',
-    status: '2'
-  }
-]
 
 // 初始化
 onMounted(() => {
@@ -200,43 +161,72 @@ onMounted(() => {
 
 // 获取优惠券列表
 function getCouponListData() {
-  // 模拟API调用
-  setTimeout(() => {
-    couponList.value = mockCouponList
-  }, 300)
+  const params = {
+    conditions_: 'sort:sort:asc;createTime:sort:desc',
+    size: 999999 // 一次性获取商家所有优惠券
+  }
+  getCouponList(params).then(response => {
+    if (response.code === 0) {
+      couponList.value = response.data.records.map(coupon => ({
+        id: coupon.id,
+        name: coupon.name
+      }))
+    } else {
+      ElMessage.error('获取优惠券列表失败')
+    }
+  }).catch(error => {
+    ElMessage.error('获取优惠券列表失败')
+    console.error('获取优惠券列表失败:', error)
+  })
 }
 
 // 获取领取记录
 function getList() {
   loading.value = true
   const params = {
-    conditions_: `sort:receiveTime:desc`,
+    conditions_: `createTime:sort:desc`,
     size: pagination.size,
     current: pagination.current
   }
   
   // 合并查询参数
   if (queryParams.couponId) {
-    params.conditions_ += `,couponId:${queryParams.couponId}:eq`
+    params.conditions_ += `;couponId:eq:${queryParams.couponId}`
   }
-  if (queryParams.userInfo) {
-    params.conditions_ += `,userInfo:${queryParams.userInfo}:like`
+  if (queryParams.type) {
+    params.conditions_ += `;type:eq:${queryParams.type}`
+  }
+  if (queryParams.name) {
+    params.conditions_ += `;name:like:${queryParams.name}`
+  }
+  if (queryParams.useRange) {
+    params.conditions_ += `;useRange:eq:${queryParams.useRange}`
   }
   
-  // 模拟API调用
-  setTimeout(() => {
-    let filteredList = mockReceiveList
-    if (queryParams.couponId) {
-      // 根据优惠券ID过滤
-      const coupon = couponList.value.find(c => c.id == queryParams.couponId)
-      if (coupon) {
-        filteredList = mockReceiveList.filter(item => item.couponName === coupon.name)
-      }
+  getMemberCouponList(params).then(response => {
+    if (response.code === 0) {
+      // 映射响应数据到前端需要的格式
+      receiveList.value = response.data.records.map(item => ({
+        id: item.id,
+        couponName: item.name,
+        couponType: item.type.toString(),
+        couponValue: item.type === 2 ? item.discount * 100 : item.amount,
+        minAmount: item.minAmount,
+        receiveTime: item.createTime,
+        useRange: item.useRange.toString(),
+        beginTime: item.beginTime,
+        endTime: item.endTime
+      }))
+      pagination.total = Number(response.data.total)
+    } else {
+      ElMessage.error('获取领取记录失败')
     }
-    receiveList.value = filteredList
-    pagination.total = filteredList.length
+  }).catch(error => {
+    ElMessage.error('获取领取记录失败')
+    console.error('获取领取记录失败:', error)
+  }).finally(() => {
     loading.value = false
-  }, 500)
+  })
 }
 
 // 查询
@@ -249,7 +239,9 @@ function handleQuery() {
 function resetQuery() {
   Object.assign(queryParams, {
     couponId: '',
-    userInfo: ''
+    type: '',
+    name: '',
+    useRange: ''
   })
   handleQuery()
 }
@@ -276,24 +268,14 @@ function getTypeText(type) {
   return typeMap[type] || '未知'
 }
 
-// 获取状态文本
-function getStatusText(status) {
-  const statusMap = {
-    '1': '已领取',
-    '2': '已过期',
-    '3': '已使用'
+// 获取使用范围文本
+function getUseRangeText(useRange) {
+  const useRangeMap = {
+    '1': '店铺通用',
+    '2': '指定商品',
+    '3': '指定分类'
   }
-  return statusMap[status] || '未知'
-}
-
-// 获取状态标签类型
-function getStatusTagType(status) {
-  const typeMap = {
-    '1': 'info',
-    '2': 'warning',
-    '3': 'success'
-  }
-  return typeMap[status] || 'info'
+  return useRangeMap[useRange] || '未知'
 }
 </script>
 

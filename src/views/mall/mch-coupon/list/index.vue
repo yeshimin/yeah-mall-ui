@@ -408,6 +408,7 @@ function getList() {
         startTime: item.beginTime,
         endTime: item.endTime,
         totalCount: item.quantity,
+        perLimit: item.perLimit,
         receivedCount: item.received,
         usedCount: item.used,
         status: item.isEnabled ? '1' : '0'
