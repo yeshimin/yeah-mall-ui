@@ -27,14 +27,15 @@
 </template>
 
 <script setup>
+import { ref, computed, watch, onMounted, getCurrentInstance, toRaw } from 'vue'
 import { QuillEditor } from "@vueup/vue-quill";
 import "@vueup/vue-quill/dist/vue-quill.snow.css";
 import { getToken } from "@/utils/auth";
-
-const { proxy } = getCurrentInstance();
+import { ElMessage } from 'element-plus';
 
 const quillEditorRef = ref();
-const uploadUrl = ref(import.meta.env.VITE_APP_BASE_API + "/common/upload"); // 上传的图片服务器地址
+const uploadRef = ref();
+const uploadUrl = ref(import.meta.env.VITE_APP_BASE_API + "/mch/storage/upload"); // 上传的图片服务器地址
 const headers = ref({
   Authorization: "Bearer " + getToken()
 });
@@ -143,24 +144,55 @@ function toggleFullscreen() {
   }
 }
 
-// 如果设置了上传地址则自定义图片上传事件
+// 自定义图片上传事件
 onMounted(() => {
-  if (props.type == 'url') {
-    let quill = quillEditorRef.value.getQuill();
-    let toolbar = quill.getModule("toolbar");
-    toolbar.addHandler("image", (value) => {
-      if (value) {
-        proxy.$refs.uploadRef.click();
-      } else {
-        quill.format("image", false);
+  let quill = quillEditorRef.value.getQuill();
+  let toolbar = quill.getModule("toolbar");
+  
+  // 图片上传处理
+  toolbar.addHandler("image", (value) => {
+    if (value) {
+      if (props.type == 'url') {
+        uploadRef.value.click();
+      } else if (props.type == 'base64') {
+        // 创建文件选择输入
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            // 校验文件格式和大小
+            if (handleBeforeUpload(file)) {
+              // 转换为base64
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                const base64Url = event.target.result;
+                // 获取光标位置
+                const selection = quill.getSelection();
+                if (selection) {
+                  const length = selection.index;
+                  // 插入图片
+                  quill.insertEmbed(length, "image", base64Url);
+                  // 调整光标到最后
+                  quill.setSelection(length + 1);
+                }
+              };
+              reader.readAsDataURL(file);
+            }
+          }
+        };
+        input.click();
       }
-    });
-    
-    // 添加全屏按钮处理函数
-    toolbar.addHandler("custom-fullscreen", () => {
-      toggleFullscreen();
-    });
-  }
+    } else {
+      quill.format("image", false);
+    }
+  });
+  
+  // 添加全屏按钮处理函数
+  toolbar.addHandler("custom-fullscreen", () => {
+    toggleFullscreen();
+  });
 });
 
 // 上传前校检格式和大小
@@ -169,40 +201,70 @@ function handleBeforeUpload(file) {
   const isJPG = type.includes(file.type);
   //检验文件格式
   if (!isJPG) {
-    proxy.$modal.msgError(`图片格式错误!`);
+    ElMessage.error(`图片格式错误!`);
     return false;
   }
   // 校检文件大小
   if (props.fileSize) {
     const isLt = file.size / 1024 / 1024 < props.fileSize;
     if (!isLt) {
-      proxy.$modal.msgError(`上传文件大小不能超过 ${props.fileSize} MB!`);
+      ElMessage.error(`上传文件大小不能超过 ${props.fileSize} MB!`);
       return false;
     }
   }
   return true;
 }
 
+// 构造完整的图片URL
+function getFullImageUrl(fileKey) {
+  if (!fileKey) return '';
+  
+  // 根据当前激活的环境获取相应的基础地址配置
+  const env = import.meta.env.VITE_APP_ENV;
+  
+  // 根据不同环境构造图片URL
+  if (env === 'development') {
+    // 开发环境从环境变量中获取目标地址
+    const proxyTarget = import.meta.env.VITE_APP_DEV_BACKEND_URL || 'http://localhost:8080';
+    return `${proxyTarget}/public/storage/preview?fileKey=${fileKey}`;
+  } else {
+    // 其他环境(生产、测试等)使用配置的基础API路径
+    const baseApi = import.meta.env.VITE_APP_BASE_API || '';
+    return `${baseApi}/public/storage/preview?fileKey=${fileKey}`;
+  }
+}
+
 // 上传成功处理
 function handleUploadSuccess(res, file) {
+  // 确保res是对象
+  const response = typeof res === 'string' ? JSON.parse(res) : res;
   // 如果上传成功
-  if (res.code == 200) {
+  if (response.code === 0) {
     // 获取富文本实例
-    let quill = toRaw(quillEditorRef.value).getQuill();
+    let quill = quillEditorRef.value.getQuill();
     // 获取光标位置
-    let length = quill.selection.savedRange.index;
-    // 插入图片，res.url为服务器返回的图片链接地址
-    quill.insertEmbed(length, "image", import.meta.env.VITE_APP_BASE_API + res.fileName);
-    // 调整光标到最后
-    quill.setSelection(length + 1);
+    let selection = quill.getSelection();
+    if (!selection) return;
+    let length = selection.index;
+    // 插入图片，使用构造的完整图片URL
+    const fileKey = response.data ? response.data.fileKey : '';
+    if (fileKey) {
+      const imageUrl = getFullImageUrl(fileKey);
+      quill.insertEmbed(length, "image", imageUrl);
+      // 调整光标到最后
+      quill.setSelection(length + 1);
+    } else {
+      ElMessage.error("图片插入失败：未返回文件key");
+    }
   } else {
-    proxy.$modal.msgError("图片插入失败");
+    ElMessage.error(response.message || "图片插入失败");
   }
 }
 
 // 上传失败处理
-function handleUploadError() {
-  proxy.$modal.msgError("图片插入失败");
+function handleUploadError(error) {
+  ElMessage.error("图片插入失败");
+  console.error('图片上传失败:', error);
 }
 </script>
 

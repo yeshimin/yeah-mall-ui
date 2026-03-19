@@ -251,7 +251,7 @@ const createFormRules = {
 
 const editDialogVisible = ref(false)
 const editStep = ref(0)
-const editForm = ref({ id: '', name: '', categoryId: '', specs: [], detailDesc: '' })
+const editForm = ref({ id: '', name: '', categoryId: '', specs: [], detailDesc: '', detailImages: null })
 const editFormRules = {
   name: [ { required: true, message: '请输入商品名称', trigger: 'blur' } ],
   categoryId: [ { required: true, message: '请选择所属分类', trigger: 'blur' } ]
@@ -377,6 +377,27 @@ function handleAdd() {
   fetchSpecs()
   createDialogVisible.value = true
 }
+// 从富文本内容中提取图片URL并解析出fileKey
+function extractImagesFromRichText(content) {
+  if (!content) return [];
+  
+  const fileKeys = [];
+  const imgRegex = /<img[^>]+src="([^"]+)"/g;
+  let match;
+  
+  while ((match = imgRegex.exec(content)) !== null) {
+    const imageUrl = match[1];
+    // 从URL中提取fileKey
+    const urlParams = new URLSearchParams(imageUrl.split('?')[1] || '');
+    const fileKey = urlParams.get('fileKey');
+    if (fileKey) {
+      fileKeys.push(fileKey);
+    }
+  }
+  
+  return fileKeys;
+}
+
 function handleCreateConfirm() {
   if (!createForm.value.name || !createForm.value.categoryId) {
     ElMessage.warning('请填写完整信息')
@@ -386,12 +407,16 @@ function handleCreateConfirm() {
   createForm.value.specs = selectedSpecs.value.filter(s => s.optIds.length)
   console.log('selectedSpecs.value: ', JSON.stringify(createForm.value.specs))
 
+  // 提取富文本中的图片
+  const detailImages = extractImagesFromRichText(createForm.value.detailDesc);
+
   createSpu({
     shopId: getShopId(),
     name: createForm.value.name,
     categoryId: createForm.value.categoryId,
     specs: createForm.value.specs,
-    detailDesc: createForm.value.detailDesc
+    detailDesc: createForm.value.detailDesc,
+    detailImages: detailImages
   }).then(res => {
     ElMessage.success('创建成功')
     createDialogVisible.value = false
@@ -413,7 +438,12 @@ function handleUpdate(row) {
   getSpuDetail(row.id).then(res => {
     const data = res.data || {};
     // 初始化表单数据
-    editForm.value = { ...data };
+    editForm.value = { 
+      ...data,
+      detailImages: data.detailImages || null
+    };
+    // 保存原始的detailDesc用于比较
+    editForm.value.originalDetailDesc = data.detailDesc || '';
     // 初始化规格选择状态
     editSelectedSpecs.value = (data.specs || []).map(spec => {
       return {
@@ -462,9 +492,17 @@ function handleEditConfirm() {
   editForm.value.specs = editSelectedSpecs.value.filter(s => s.optIds.length)
   console.log('editForm.value.specs: ', JSON.stringify(editForm.value.specs))
 
+  // 检查富文本内容是否有改动
+  let detailImages = null;
+  if (editForm.value.detailDesc !== editForm.value.originalDetailDesc) {
+    // 提取富文本中的图片
+    detailImages = extractImagesFromRichText(editForm.value.detailDesc);
+  }
+
   updateSpu({
     ...editForm.value,
-    detailDesc: editForm.value.detailDesc
+    detailDesc: editForm.value.detailDesc,
+    detailImages: detailImages
   }).then(() => {
     ElMessage.success('修改成功')
     editDialogVisible.value = false
