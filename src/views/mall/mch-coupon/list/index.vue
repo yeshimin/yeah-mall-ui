@@ -62,7 +62,7 @@
       </el-table-column>
       <el-table-column prop="value" label="优惠金额/折扣" width="120">
         <template #default="scope">
-          {{ scope.row.type === '2' ? scope.row.value + '折' : '¥' + scope.row.value }}
+          {{ scope.row.type === '2' ? scope.row.value + '%' : '¥' + scope.row.value }}
         </template>
       </el-table-column>
       <el-table-column prop="minAmount" label="使用条件" width="120">
@@ -403,7 +403,7 @@ function getList() {
         id: item.id,
         name: item.name,
         type: item.type.toString(),
-        value: item.type === 2 ? item.discount : item.amount,
+        value: item.type === 2 ? item.discount * 100 : item.amount,
         minAmount: item.minAmount,
         startTime: item.beginTime,
         endTime: item.endTime,
