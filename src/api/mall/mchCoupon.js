@@ -14,7 +14,7 @@ export function getMchCouponList(params) {
 // 创建优惠券
 export function createMchCoupon(data) {
   return request({
-    url: '/mch/mchCoupon/crud/create',
+    url: '/mch/mchCoupon/create',
     method: 'post',
     data
   })
@@ -23,7 +23,7 @@ export function createMchCoupon(data) {
 // 更新优惠券
 export function updateMchCoupon(data) {
   return request({
-    url: '/mch/mchCoupon/crud/update',
+    url: '/mch/mchCoupon/update',
     method: 'post',
     data
   })
@@ -50,7 +50,7 @@ export function getMchCouponDetail(id) {
 // 更新优惠券状态
 export function updateMchCouponStatus(data) {
   return request({
-    url: '/mch/mchCoupon/crud/updateStatus',
+    url: '/mch/mchCoupon/updateStatus',
     method: 'post',
     data
   })

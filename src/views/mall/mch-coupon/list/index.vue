@@ -284,7 +284,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, ElIcon } from 'element-plus'
 import { Plus, Search, Refresh, Edit, Delete, Check, View } from '@element-plus/icons-vue'
-import { getMchCouponList, createMchCoupon, updateMchCoupon, deleteMchCoupon } from '@/api/mall/mchCoupon'
+import { getMchCouponList, createMchCoupon, updateMchCoupon, deleteMchCoupon, updateMchCouponStatus } from '@/api/mall/mchCoupon'
 import { queryMchSpuList } from '@/api/mall/seckill'
 import { getCategoryTree } from '@/api/mall/category'
 import RightToolbar from '@/components/RightToolbar/index.vue'
@@ -378,7 +378,7 @@ onMounted(() => {
 function getList() {
   loading.value = true
   const params = {
-    conditions_: `sort:sort:asc;createTime:sort:desc`,
+    conditions_: `createTime:sort:desc`,
     size: pagination.size,
     current: pagination.current,
     shopId: getShopId()
@@ -568,9 +568,9 @@ function handleSubmit() {
         name: form.name,
         description: form.name,
         type: parseInt(form.type),
-        amount: form.type === '2' ? 0 : form.value,
-        discount: form.type === '2' ? form.value : 1,
-        minAmount: form.minAmount,
+        amount: form.type === '2' ? '0' : form.value.toString(),
+        discount: form.type === '2' ? form.value.toString() : '1',
+        minAmount: form.minAmount.toString(),
         quantity: form.totalCount,
         received: 0,
         used: 0,
@@ -579,7 +579,7 @@ function handleSubmit() {
         targetId: '0',
         beginTime: form.startTime,
         endTime: form.endTime,
-        sort: 0,
+        sort: 3,
         isEnabled: form.status === '1' ? 1 : 0,
         remark: ''
       }
@@ -652,7 +652,7 @@ function handleStatusChange(row) {
     type: 'warning'
   }).then(() => {
     loading.value = true
-    updateMchCoupon({
+    updateMchCouponStatus({
       id: row.id,
       isEnabled: newStatus === '1' ? true : false
     }).then(res => {
