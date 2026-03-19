@@ -284,7 +284,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, ElIcon } from 'element-plus'
 import { Plus, Search, Refresh, Edit, Delete, Check, View } from '@element-plus/icons-vue'
-import { getMchCouponList, createMchCoupon, updateMchCoupon, deleteMchCoupon, updateMchCouponStatus } from '@/api/mall/mchCoupon'
+import { getMchCouponList, createMchCoupon, updateMchCoupon, deleteMchCoupon, updateMchCouponStatus, getSpuDetail } from '@/api/mall/mchCoupon'
 import { queryMchSpuList } from '@/api/mall/seckill'
 import { getCategoryTree } from '@/api/mall/category'
 import RightToolbar from '@/components/RightToolbar/index.vue'
@@ -411,7 +411,9 @@ function getList() {
         perLimit: item.perLimit,
         receivedCount: item.received,
         usedCount: item.used,
-        status: item.isEnabled ? '1' : '0'
+        status: item.isEnabled ? '1' : '0',
+        useScope: item.useRange ? item.useRange.toString() : '1',
+        targetId: item.targetId || ''
       }))
       pagination.total = res.data.total
     } else {
@@ -473,7 +475,39 @@ function handleEdit(row) {
   form.targetName = row.targetName || ''
   form.targetImage = row.targetImage || ''
   form.status = row.status
-  dialogVisible.value = true
+  
+  // 如果使用范围是商品且有targetId，调用SPU详情接口获取商品信息
+  if (form.useScope === '2' && form.targetId) {
+    loading.value = true
+    getSpuDetail(form.targetId).then(res => {
+      if (res.code === 0) {
+        const spu = res.data
+        form.targetName = spu.name
+        form.targetImage = spu.mainImage
+      } else {
+        ElMessage.error('获取商品信息失败')
+      }
+      loading.value = false
+      dialogVisible.value = true
+    }).catch(() => {
+      ElMessage.error('获取商品信息失败')
+      loading.value = false
+      dialogVisible.value = true
+    })
+  } else if (form.useScope === '3' && form.targetId) {
+    // 如果使用范围是分类且有targetId，先加载分类树数据
+    loading.value = true
+    fetchCategoryTree().then(() => {
+      loading.value = false
+      dialogVisible.value = true
+    }).catch(() => {
+      ElMessage.error('获取分类树失败')
+      loading.value = false
+      dialogVisible.value = true
+    })
+  } else {
+    dialogVisible.value = true
+  }
 }
 
 // 处理优惠券类型变更
@@ -489,7 +523,7 @@ function handleUseScopeChange() {
     fetchCategoryTree()
   }
   if (form.useScope !== '2' && form.useScope !== '3') {
-    form.targetId = ''
+    form.targetId = '0'
     form.targetName = ''
     form.targetImage = ''
   }
@@ -563,6 +597,19 @@ function handleSubmit() {
   formRef.value.validate((valid) => {
     if (valid) {
       loading.value = true
+      // 根据使用范围设置targetId
+      let targetIdValue = '0';
+      if (form.useScope === '1') {
+        // 店铺通用，传'0'
+        targetIdValue = '0';
+      } else if (form.useScope === '2') {
+        // 指定商品，使用spu的id
+        targetIdValue = form.targetId || '0';
+      } else if (form.useScope === '3') {
+        // 指定分类，使用分类ID
+        targetIdValue = form.targetId || '0';
+      }
+      
       const submitData = {
         shopId: getShopId(),
         name: form.name,
@@ -576,7 +623,7 @@ function handleSubmit() {
         used: 0,
         perLimit: form.perLimit,
         useRange: parseInt(form.useScope),
-        targetId: '0',
+        targetId: targetIdValue,
         beginTime: form.startTime,
         endTime: form.endTime,
         sort: 3,
