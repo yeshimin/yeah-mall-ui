@@ -1,14 +1,14 @@
-yeah-boot-ui: https://github.com/yeshimin/yeah-boot-ui
+yeah-mall-ui: https://github.com/yeshimin/yeah-mall-ui
 
 该项目基于若依前端修改：https://github.com/yangzongzhuan/RuoYi-Vue3.git
 
 #运行
 ```shell
 # 克隆项目
-git clone https://github.com/yeshimin/yeah-boot-ui.git
+git clone https://github.com/yeshimin/yeah-mall-ui.git
 
 # 进入项目目录
-cd yeah-boot-ui
+cd yeah-mall-ui
 
 # 安装依赖
 yarn --registry=https://registry.npmmirror.com
