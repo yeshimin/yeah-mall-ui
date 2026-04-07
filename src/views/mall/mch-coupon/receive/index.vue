@@ -162,7 +162,7 @@ onMounted(() => {
 // 获取优惠券列表
 function getCouponListData() {
   const params = {
-    conditions_: 'sort:sort:asc;createTime:sort:desc',
+    conditions_: 'createTime:sort:desc',
     size: 999999 // 一次性获取商家所有优惠券
   }
   getCouponList(params).then(response => {
