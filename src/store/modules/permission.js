@@ -240,7 +240,7 @@ function adapterMenuTree(serverData) {
     return true
   }).map(item => {
     const resource = {
-      name: item.name,
+      name: `Menu${item.id}`,
       path: item.path,
       hidden: !item.visible,
       redirect: item.type == 1 ? 'noRedirect' : '',
